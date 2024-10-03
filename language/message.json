@@ -1,0 +1,449 @@
+{
+    "900": {
+        "msg": {
+            "en": "Customer created successfully",
+            "ar": "تم إنشاء العميل بنجاح",
+            "ru": "Клиент успешно создан"
+        }
+    },
+    "901": {
+        "msg": {
+            "en": "Customer updated successfully",
+            "ar": "تم تحديث العميل بنجاح",
+            "ru": "Клиент успешно обновлен"
+        }
+    },
+    "902": {
+        "msg": {
+            "en": "Customer deleted successfully",
+            "ar": "تم حذف العميل بنجاح",
+            "ru": "Клиент успешно удален"
+        }
+    },
+    "904": {
+        "msg": {
+            "en": "You are not allowed to perform this action",
+            "ar": "غير مسموح لك بأداء هذا الإجراء",
+            "ru": "Вам не разрешено выполнить это действие"
+        }
+    },
+    "905": {
+        "msg": {
+            "en": "Authentication credentials were not provided.",
+            "ar": "لم تتم توفير بيانات اعتماد المصادقة",
+            "ru": "Учетные данные аутентификации не были предоставлены."
+        }
+    },
+    "906": {
+        "msg": {
+            "en": "Contract created successfully",
+            "ar": "تم إنشاء العقد بنجاح",
+            "ru": "Договор успешно создан"
+        }
+    },
+    "907": {
+        "msg": {
+            "en": "Contract updated successfully.",
+            "ar": "تم تحديث العقد بنجاح",
+            "ru": "Договор успешно обновлен."
+        }
+    },
+    "908": {
+        "msg": {
+            "en": "Contract deleted successfully",
+            "ar": "تم حذف العقد بنجاح",
+            "ru": "Договор успешно удален"
+        }
+    },
+    "909": {
+        "msg": {
+            "en": "Customer with this token does not exist",
+            "ar": "العميل بهذا الرمز غير موجود",
+            "ru": "Клиент с этим токеном не существует"
+        }
+    },
+    "910": {
+        "msg": {
+            "en": "User does not exist",
+            "ar": "المستخدم غير موجود",
+            "ru": "Пользователь не существует"
+        }
+    },
+    "912": {
+        "msg": {
+            "en": "Driver does not exist",
+            "ar": "السائق غير موجود",
+            "ru": "Водитель не существует"
+        }
+    },
+    "913": {
+        "msg": {
+            "en": "Customer with this email already exists",
+            "ar": "العميل بهذا البريد الإلكتروني موجود بالفعل",
+            "ru": "Клиент с этим электронным адресом уже существует"
+        }
+    },
+    "914": {
+        "msg": {
+            "en": "Access Unauthorized",
+            "ar": "الوصول غير مرخص",
+            "ru": "Доступ не авторизован"
+        }
+    },
+    "915": {
+        "msg": {
+            "en": "Contract number already exists",
+            "ar": "رقم العقد موجود بالفعل",
+            "ru": "Номер договора уже существует"
+        }
+    },
+    "917": {
+        "msg": {
+            "en": "Invalid key for sorting",
+            "ar": "مفتاح غير صالح للفرز",
+            "ru": "Недопустимый ключ для сортировки"
+        }
+    },
+    "918": {
+        "msg": {
+            "en": "Device updated",
+            "ar": "تم تحديث الجهاز",
+            "ru": "Устройство обновлено"
+        }
+    },
+    "919": {
+        "msg": {
+            "en": "Role created successfully",
+            "ar": "تم إنشاء المجموعة بنجاح",
+            "ru": "Группа успешно создана"
+        }
+    },
+    "920": {
+        "msg": {
+            "en": "Role id is required",
+            "ar": "معرف المجموعة مطلوب",
+            "ru": "Требуется идентификатор группы"
+        }
+    },
+    "921": {
+        "msg": {
+            "en": "Role updated successfully",
+            "ar": "تم تحديث المجموعة بنجاح",
+            "ru": "Группа успешно обновлена"
+        }
+    },
+    "922": {
+        "msg": {
+            "en": "Role deleted successfully",
+            "ar": "تم حذف المجموعة بنجاح",
+            "ru": "Группа успешно удалена"
+        }
+    },
+    "923": {
+        "msg": {
+            "en": "Users required",
+            "ar": "المستخدمين مطلوبين",
+            "ru": "Требуются пользователи"
+        }
+    },
+    "924": {
+        "msg": {
+            "en": "Role required",
+            "ar": "المجموعة مطلوبة",
+            "ru": "Требуется группа"
+        }
+    },
+    "925": {
+        "msg": {
+            "en": "Invalid User",
+            "ar": "مستخدم غير صالح",
+            "ru": "Недопустимый пользователь"
+        }
+    },
+    "926": {
+        "msg": {
+            "en": "Role already assigned",
+            "ar": "المجموعة معينة بالفعل",
+            "ru": "Группа уже назначена"
+        }
+    },
+    "927": {
+        "msg": {
+            "en": "Role does not exist",
+            "ar": "المجموعة غير موجودة",
+            "ru": "Группа не существует"
+        }
+    },
+    "928": {
+        "msg": {
+            "en": "Customer not found",
+            "ar": "العميل غير موجود",
+            "ru": "Клиент не найден"
+        }
+    },
+    "929": {
+        "msg": {
+            "en": "Features are required",
+            "ar": "الميزات مطلوبة",
+            "ru": "Требуются функции"
+        }
+    },
+    "930": {
+        "msg": {
+            "en": "Invalid user type",
+            "ar": "نوع مستخدم غير صالح",
+            "ru": "Недопустимый тип пользователя"
+        }
+    },
+    "931": {
+        "msg": {
+            "en": "Resource Access Restricted",
+            "ar": "الوصول إلى الموارد مقيد",
+            "ru": "Доступ к ресурсу ограничен"
+        }
+    },
+    "932": {
+        "msg": {
+            "en": "Role Assigned Successfully",
+            "ar": "تم تعيين المجموعة بنجاح",
+            "ru": "Группа успешно назначена"
+        }
+    },
+    "933": {
+        "msg": {
+            "en": "Export Successfully",
+            "ar": "التصدير بنجاح",
+            "ru": "Экспорт успешно"
+        }
+    },
+    "950": {
+        "msg": {
+            "en": "Unauthenticated",
+            "ar": "غير مصادق عليه",
+            "ru": "Не аутентифицирован"
+        }
+    },
+    "995": {
+        "msg": {
+            "en": "Token Expired",
+            "ar": "انتهت صلاحية الرمز",
+            "ru": "Истек срок действия токена"
+        }
+    },
+    "1000": {
+        "msg": {
+            "en": "Successful",
+            "ar": ""
+        }
+    },
+    "1001": {
+        "msg": {
+            "en": "Unsuccessful",
+            "ar": ""
+        }
+    },
+    "1002": {
+        "msg": {
+            "en": "Something went wrong",
+            "ar": ""
+        }
+    },
+    "1003": {
+        "msg": {
+            "en": "Device added successfully.",
+            "ar": ""
+        }
+    },
+    "1004": {
+        "msg": {
+            "en": "Device updated successfully.",
+            "ar": ""
+        }
+    },
+    "1005": {
+        "msg": {
+            "en": "Device deleted successfully.",
+            "ar": ""
+        }
+    },
+    "1007": {
+        "msg": {
+            "en": "Email added successfully.",
+            "ar": ""
+        }
+    },
+    "1008": {
+        "msg": {
+            "en": "Email updated successfully.",
+            "ar": ""
+        }
+    },
+    "1009": {
+        "msg": {
+            "en": "Email deleted successfully.",
+            "ar": ""
+        }
+    },
+    "1010": {
+        "msg": {
+            "en": "Email does not exists.",
+            "ar": ""
+        }
+    },
+    "1011": {
+        "msg": {
+            "en": "Pet device unavailable.",
+            "ar": ""
+        }
+    },
+    "1012": {
+        "msg": {
+            "en": "Device does not exist.",
+            "ar": ""
+        }
+    },
+    "1013": {
+        "msg": {
+            "en": "Building name already exists",
+            "ar": ""
+        }
+    },
+    "1014": {
+        "msg": {
+            "en": "Floor does not exist",
+            "ar": ""
+        }
+    },
+    "1015": {
+        "msg": {
+            "en": "Floor does not exist",
+            "ar": ""
+        }
+    },
+    "1016": {
+        "msg": {
+            "en": "Floor does not exist",
+            "ar": ""
+        }
+    },
+    "1017": {
+        "msg": {
+            "en": "Device state updated",
+            "ar": ""
+        }
+    },
+    "1018": {
+        "msg": {
+            "en": "Device state could not be updated",
+            "ar": ""
+        }
+    },
+    "1019": {
+        "msg": {
+            "en": "Device is not associated with any building",
+            "ar": ""
+        }
+    },
+    "1020": {
+        "msg": {
+            "en": "Schedule created",
+            "ar": ""
+        }
+    },
+    "1021": {
+        "msg": {
+            "en": "Schedule updated",
+            "ar": ""
+        }
+    },
+    "1022": {
+        "msg": {
+            "en": "Schedule does not exist",
+            "ar": ""
+        }
+    },
+    "1023": {
+        "msg": {
+            "en": "Schedule already exists",
+            "ar": ""
+        }
+    },
+    "1024": {
+        "msg": {
+            "en": "Device Group does not exist",
+            "ar": ""
+        }
+    },
+    "1025": {
+        "msg": {
+            "en": "Start time cannot be less than current time",
+            "ar": ""
+        }
+    },
+    "1026": {
+        "msg": {
+            "en": "Request sent successfully",
+            "ar": ""
+        }
+    },
+    "1027": {
+        "msg": {
+            "en": "Device is offline",
+            "ar": ""
+        }
+    },
+    "1028": {
+        "msg": {
+            "en": "Record with same name already exists",
+            "ar": ""
+        }
+    },
+    "1029": {
+        "msg": {
+            "en": "Role created successfully",
+            "ar": ""
+        }
+    },
+    "1030": {
+        "msg": {
+            "en": "Role updated successfully",
+            "ar": ""
+        }
+    },
+    "1031": {
+        "msg": {
+            "en": "Duplicate record exists",
+            "ar": ""
+        }
+    },
+    "1032": {
+        "msg": {
+            "en": "No device groups assigned. Please contact your admin.",
+            "ar": ""
+        }
+    },
+    "1033": {
+        "msg": {
+            "en": "Role not found",
+            "ar": ""
+        }
+    },
+    "1034": {
+        "msg": {
+            "en": "No role or device group assigned. Please contact your admin.",
+            "ar": ""
+        }
+    },
+    "1035": {
+        "msg": {
+            "en": "You have been logged out due to inactivity. Please sign in again to continue.",
+            "ar": ""
+        }
+    },
+    "1036": {
+        "msg": {
+            "en": "This device group does not have any controllable device",
+            "ar": ""
+        }
+    }
+}
