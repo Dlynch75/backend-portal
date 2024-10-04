@@ -445,5 +445,11 @@
             "en": "This device group does not have any controllable device",
             "ar": ""
         }
+    },
+    "1037": {
+        "msg": {
+            "en": "This device group does not have any controllable device",
+            "ar": ""
+        }
     }
 }

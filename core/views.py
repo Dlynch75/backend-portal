@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from utils.response import create_message, create_response
 from utils.utils import  get_user_from_token, response_500
 from .models import CustomUser
-from .serializers import TeacherSignupSerializer, SchoolSignupSerializer
+from .serializers import TeacherSerializer, SchoolSerializer
 
 class UserSignupView(APIView):
     def post(self, request):
@@ -29,9 +29,9 @@ class UserSignupView(APIView):
 
             # Use the appropriate serializer based on `is_school`
             if is_school:
-                serializer = SchoolSignupSerializer(data=request.data)
+                serializer = SchoolSerializer(data=request.data)
             else:
-                serializer = TeacherSignupSerializer(data=request.data)
+                serializer = TeacherSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
@@ -60,14 +60,14 @@ class LoginView(APIView):
 
             # Generate tokens
             refresh = RefreshToken.for_user(user)
-
             role = 'teacher' if user.is_teacher else 'school'
             user_data = {
                 "email": user.email,
                 "username": user.username,
                 "city": user.city,
                 "address": user.address,
-                "role": role
+                "role": role,
+                "id": user.id
             }
 
             if user.is_teacher:

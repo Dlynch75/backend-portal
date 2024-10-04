@@ -17,6 +17,18 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 MSG_LOCALE = "en"
 
+# Allow all origins (for development only)
+CORS_ALLOW_ALL_ORIGINS = True
+
+# OR allow specific origins (recommended for production)
+# CORS_ALLOWED_ORIGINS = [
+#     "https://example.com",
+#     "http://localhost:3000",
+#     # Add more origins as needed
+# ]
+
+# If you want to allow credentials (cookies, authorization headers)
+CORS_ALLOW_CREDENTIALS = True
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -40,8 +52,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'language',
-    'core'
+    'school',
+    'teacher',
+    'core',
+    'corsheaders',
+
 ]
 
 MIDDLEWARE = [
@@ -52,6 +69,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware', 
 ]
 
 ROOT_URLCONF = 'school_project.urls'
@@ -133,14 +151,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-}
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': (
+#         'rest_framework_simplejwt.authentication.JWTAuthentication',
+#     ),
+# }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=120),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

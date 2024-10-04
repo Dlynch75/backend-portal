@@ -27,6 +27,8 @@ from django.urls import path, include
 
 extra_patterns_v1 = [
     path('core/', include('core.urls')),
+    path('school/', include('school.urls')),
+    path('teacher/', include('teacher.urls')),
     
     # Add more version 1 specific URLs here
 ]
