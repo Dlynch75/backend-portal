@@ -1,5 +1,6 @@
+from datetime import date
 from rest_framework.response import Response
-from core.models import CustomUser
+from core.models import CustomUser, Teacher, School, Package, UserPackage
 from school_project import settings
 from utils.response import create_message
 from rest_framework import status
@@ -10,6 +11,7 @@ from rest_framework.response import Response
 import jwt
 from rest_framework.exceptions import AuthenticationFailed
 from functools import wraps
+from django.core.exceptions import ObjectDoesNotExist
 
 def get_user_from_token(request):
     auth_header = request.headers.get('Authorization')
@@ -77,3 +79,46 @@ def require_authentication(view_func):
         return view_func(self, request, *args, **kwargs)
 
     return wrapped_view
+
+def assign_user_to_package(user, package_id):
+    """
+    Assign a teacher or school to a package. If the user already has a package, it will be removed.
+    
+    Args:
+        user: The user to be assigned, either a Teacher or School instance.
+        package_id: The ID of the package to assign the user to.
+    
+    Returns:
+        UserPackage instance if successfully assigned.
+    
+    Raises:
+        ValueError: If an invalid user type or package is provided.
+    """
+    try:
+        package = Package.objects.get(id=package_id)
+    except ObjectDoesNotExist:
+        raise Exception("Package does not exist.")
+    print(package)
+    # Remove any previous subscription for the user
+    if user.is_teacher:
+        UserPackage.objects.filter(teacher=user.teacher).delete()
+        user_package = UserPackage.objects.create(teacher=user.teacher, package=package)
+        # set user to be subscribed , set apply count rest, and date reset
+        user.is_subscribed = True 
+        user.last_reset_date = date.today()
+        user.teacher.applied_count = 0
+        user.teacher.save()
+        user.save()
+    elif user.is_school:
+        UserPackage.objects.filter(school=user.school).delete()
+        user_package = UserPackage.objects.create(school=user.school, package=package)
+        # set user to be subscribed , set apply count rest, and date reset
+        user.school.post_count = 0
+        user.last_reset_date = date.today()
+        user.school.save()
+        user.is_subscribed = True 
+        user.save()
+    else:
+        raise Exception("Invalid user type. Must be a Teacher or School.")
+
+    return user_package

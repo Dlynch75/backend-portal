@@ -3,6 +3,8 @@ from django.db import models
 # Create your models here.
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
+from django.forms import JSONField
+from datetime import datetime
 
 # Custom user manager to handle both types of users
 class CustomUserManager(BaseUserManager):
@@ -26,10 +28,12 @@ class CustomUser(AbstractBaseUser):
     username = models.CharField(max_length=50)
     city = models.CharField(max_length=100)
     address = models.CharField(max_length=255)
+    is_subscribed = models.BooleanField(default=False)
     is_teacher = models.BooleanField(default=False)
     is_school = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    last_reset_date = models.DateField(default=datetime.now)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
@@ -43,6 +47,8 @@ class CustomUser(AbstractBaseUser):
 class Teacher(CustomUser):
     full_name = models.CharField(max_length=100)
     experience_year = models.PositiveIntegerField()
+    applied_count= models.IntegerField(default=0)
+
 
     class Meta:
         verbose_name = 'Teacher'
@@ -50,6 +56,44 @@ class Teacher(CustomUser):
 # School model inheriting from CustomUser
 class School(CustomUser):
     school_name = models.CharField(max_length=255)
+    post_count= models.IntegerField(default=0)
 
     class Meta:
         verbose_name = 'School'
+        
+
+
+        
+class Package(models.Model):
+    PACKAGE_FOR_CHOICES = (
+        ('teacher', 'Teacher'),
+        ('school', 'School'),
+    )
+    title = models.CharField(max_length=100)
+    package_type = models.CharField(max_length=50)
+    description = models.TextField()
+    amount = models.FloatField(default=0.0)
+    offer = models.JSONField(default=None)  
+    package_for = models.CharField(max_length=10, choices=PACKAGE_FOR_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.package_for})"
+
+    class Meta:
+        verbose_name = 'Package'
+        verbose_name_plural = 'Packages'
+        
+        
+
+class UserPackage(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, null=True, blank=True, related_name='packages')
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, null=True, blank=True, related_name='packages')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.package} ({self.school}) ({self.teacher})"
+
+    class Meta:
+        verbose_name = 'UserPackage'

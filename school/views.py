@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
 import logging
+from school.helper import can_create_post
 from utils.response import create_message, create_response
 from utils.utils import auth_user, get_user_from_token, require_authentication, response_500
 from .models import JobPosting
@@ -70,11 +71,20 @@ class JobPostingListCreateView(APIView):
     @require_authentication
     def post(self, request):
         try:
+            school = get_user_from_token(request)
+            if not school.is_subscribed:
+                raise Exception("Please add Subscription to Apply.")
+            if not can_create_post(school):
+                raise Exception("Post limit reached for your package this month.")
             serializer = JobPostingSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
+                # Increment the post count
+                school.school.post_count += 1
+                school.school.save()
                 return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
-            return create_response(create_message(serializer.errors, 00, "Missing Data !"),status.HTTP_400_BAD_REQUEST)
+            
+            raise Exception(serializer.errors)
         except Exception as e:
             return response_500(str(e))
     
@@ -97,7 +107,7 @@ class JobPostingDetailView(APIView):
             if serializer.is_valid():
                 serializer.save()
                 return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
-            return create_response(create_message(serializer.errors, 00, "Missing Data !"),status.HTTP_400_BAD_REQUEST)
+            raise Exception(serializer.errors)
         except Exception as e:
             return response_500(str(e))
         
