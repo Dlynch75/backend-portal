@@ -1,11 +1,9 @@
 # Project Documentation
 
-
 **Admin Portal**
 
 `Username: admin`
 `Password: admin@123`
-
 
 ## Setup
 
@@ -28,7 +26,6 @@ Django Management Commands
 
 `pip freeze > requirements.txt`
 
-
 ## Code Commit Format
 
 - **feat**: Mainstream feature development
@@ -40,10 +37,12 @@ Django Management Commands
 - **test**: Testing code
 - **refactor**: Refactoring of already written code
 
-## Package formate
-- Teacher Single: ``"tags": {
-  "tenant": "hn-smart-building-digital-twin-dev"
-  },``
+## Add Packages Json Values for Offer field in Package Model
 
-
-
+- Teacher Single: `{"allow_application": 1}` with PackType : "single_teacher"
+- Teacher Bronze: `{"allow_application": 5}` with PackType : "bronze_teacher"
+- Teacher Silver: `{"allow_application": 20}` with PackType : "silver_teacher"
+- Teacher Gold: `{"allow_application": null}` with PackType : "gold_teacher"
+- School Bronze: `{"allow_application": 1}` with PackType : "bronze_school"
+- School Silver: `{"allow_application": 20}` with PackType : "silver_school"
+- School Gold: `{"allow_application": null}` with PackType : "gold_school"

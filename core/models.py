@@ -33,6 +33,7 @@ class CustomUser(AbstractBaseUser):
     is_school = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
     last_reset_date = models.DateField(default=datetime.now)
 
     USERNAME_FIELD = 'email'

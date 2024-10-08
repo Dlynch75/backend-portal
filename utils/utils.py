@@ -98,13 +98,11 @@ def assign_user_to_package(user, package_id):
         package = Package.objects.get(id=package_id)
     except ObjectDoesNotExist:
         raise Exception("Package does not exist.")
-    print(package)
     # Remove any previous subscription for the user
     if user.is_teacher:
         UserPackage.objects.filter(teacher=user.teacher).delete()
         user_package = UserPackage.objects.create(teacher=user.teacher, package=package)
         # set user to be subscribed , set apply count rest, and date reset
-        user.is_subscribed = True 
         user.last_reset_date = date.today()
         user.teacher.applied_count = 0
         user.teacher.save()
@@ -116,7 +114,6 @@ def assign_user_to_package(user, package_id):
         user.school.post_count = 0
         user.last_reset_date = date.today()
         user.school.save()
-        user.is_subscribed = True 
         user.save()
     else:
         raise Exception("Invalid user type. Must be a Teacher or School.")
