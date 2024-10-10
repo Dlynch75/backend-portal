@@ -1,6 +1,6 @@
 from django.db import models
 
-from core.models import School
+from core.models import School, Teacher
 
 class JobPosting(models.Model):
     STATUS_CHOICES = [
@@ -20,7 +20,15 @@ class JobPosting(models.Model):
     salary = models.CharField(max_length=50)
     applied_people = models.IntegerField(default= 0)
     viewd = models.IntegerField(default= 0)
-    school_logo = models.ImageField(upload_to='images/', null=True, blank=True)
-
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  
+    
     def __str__(self):
         return self.title
+    
+class JobSave(models.Model):
+    job = models.ForeignKey(JobPosting, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  
+    
+    def __str__(self):
+        return f"{self.job} ({self.teacher})"

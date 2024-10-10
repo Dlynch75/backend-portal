@@ -7,8 +7,8 @@ import logging
 from school.helper import can_create_post
 from utils.response import create_message, create_response
 from utils.utils import auth_user, get_user_from_token, require_authentication, response_500
-from .models import JobPosting
-from .serializers import JobPostingSerializer
+from .models import JobPosting, JobSave
+from .serializers import JobPostingSerializer, JobSaveSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 
@@ -16,17 +16,16 @@ logger = logging.getLogger(__name__)
 
 # Create your views here.
 class JobPostingListCreateView(APIView):
-    @require_authentication
     def get(self, request):
         try:
-            school = get_user_from_token(request)
+            # school = get_user_from_token(request)
             # Get query parameters
             location = request.query_params.get('location', None)
             experience = request.query_params.get('experience', None)
             title = request.query_params.get('title', None)
             salary = request.query_params.get('salary', None)
-            status = request.query_params.get('status', None)
-            current_school = request.query_params.get('current_school', None)
+            job_status = request.query_params.get('status', None)
+            school_id = request.query_params.get('school_id', None)
 
             # Build the query
             filters = Q()
@@ -38,13 +37,13 @@ class JobPostingListCreateView(APIView):
                 filters &= Q(title__icontains=title)
             if salary:
                 filters &= Q(salary__icontains=salary)
-            if status:
-                filters &= Q(status__icontains=status)
-            if current_school:
-                filters &= Q(school_id=school.id)
-
+            if job_status:
+                filters &= Q(status__icontains=job_status)
+            if school_id:
+                filters &= Q(school_id=school_id)
+            
             # Filter job postings based on query parameters
-            job_postings = JobPosting.objects.filter(filters)
+            job_postings = JobPosting.objects.filter(filters).order_by('-created_at')
             # Check for offset and limit in the request parameters
             offset = request.query_params.get('offset', None)
             limit = request.query_params.get('limit', None)
@@ -59,7 +58,6 @@ class JobPostingListCreateView(APIView):
                 serializer = JobPostingSerializer(result_page, many=True)
                 return create_response(create_message({"count":len(job_postings), "data":serializer.data}, 1000), 
                                        status.HTTP_200_OK)
-
 
             # Serialize and return the filtered data
             serializer = JobPostingSerializer(job_postings, many=True)
@@ -88,9 +86,7 @@ class JobPostingListCreateView(APIView):
         except Exception as e:
             return response_500(str(e))
     
-# Retrieve, Update, and Delete view
 class JobPostingDetailView(APIView):
-    @require_authentication
     def get(self, request, pk):
         try:
             job_posting = get_object_or_404(JobPosting, pk=pk)
@@ -121,5 +117,42 @@ class JobPostingDetailView(APIView):
             return response_500(str(e))
     
 
+class JobSaveView(APIView):
+    
+    # Create a new JobSave instance (POST)
+    @require_authentication
+    def post(self, request):
+        try:
+            user = get_user_from_token(request)
+            if user.is_school:
+                raise Exception("Login as a Teacher to Save Job.")
+            print(request.data)
+            serializer = JobSaveSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return create_response(create_message(serializer.data, 1000), status.HTTP_201_CREATED)
+            raise Exception(serializer.errors)
+        except Exception as e:
+            return response_500(str(e))
 
+    @require_authentication
+    def get(self, request):
+        try:
+            teacher = get_user_from_token(request)
+            job_save = JobSave.objects.filter(teacher=teacher)
+            serializer = JobSaveSerializer(job_save, many=True)
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+    # Delete a specific JobSave instance (DELETE)
+    @require_authentication
+    def delete(self, request, pk):
+        try:
+            print(pk)
+            job_save = get_object_or_404(JobSave, pk=pk)
+            job_save.delete()
+            return create_response(create_message("Deleted", 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
 

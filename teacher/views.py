@@ -13,9 +13,7 @@ from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 
 
-class HireListCreateView(APIView):
-    
-    @require_authentication
+class HireListCreateView(APIView):    
     def get(self, request):
         try:
             # Get query parameters
