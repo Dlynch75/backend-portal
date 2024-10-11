@@ -1,7 +1,10 @@
 from rest_framework import serializers
+
+from core.serializers import SchoolSerializer
 from .models import JobPosting, JobSave
 
 class JobPostingSerializer(serializers.ModelSerializer):
+    school = SchoolSerializer(read_only=True)
     class Meta:
         model = JobPosting
         fields = '__all__'
