@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Q
 import logging
+from core.models import School
+from core.serializers import SchoolSerializer
 from school.helper import can_create_post
 from utils.response import create_message, create_response
 from utils.utils import auth_user, get_user_from_token, require_authentication, response_500
@@ -87,13 +89,16 @@ class JobPostingListCreateView(APIView):
             return response_500(str(e))
     
 class JobPostingDetailView(APIView):
+    @require_authentication
     def get(self, request, pk):
         try:
+            user = get_user_from_token(request)
             job_posting = get_object_or_404(JobPosting, pk=pk)
-            serializer = JobPostingSerializer(job_posting)
+            serializer = JobPostingSerializer(job_posting, context={'user': user})
             return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
         except Exception as e:
             return response_500(str(e))
+        
     
     @require_authentication
     def put(self, request, pk):
@@ -118,23 +123,35 @@ class JobPostingDetailView(APIView):
     
 
 class JobSaveView(APIView):
-    
-    # Create a new JobSave instance (POST)
     @require_authentication
     def post(self, request):
         try:
             user = get_user_from_token(request)
+            # Ensure only teachers can save jobs
             if user.is_school:
                 raise Exception("Login as a Teacher to Save Job.")
-            print(request.data)
+
+            # Extract the job_id from the request data
+            job_id = request.data.get('job_id', None)
+
+            if not job_id:
+                raise Exception("Job ID is required to save the job.")
+
+            # Check if this teacher has already saved this job
+            if JobSave.objects.filter(job_id=job_id, teacher=user.teacher).exists():
+                return create_response(create_message("You have already saved this job.", 1001), status.HTTP_200_OK)
+            # Proceed with saving the job
             serializer = JobSaveSerializer(data=request.data)
+
             if serializer.is_valid():
-                serializer.save()
+                serializer.save()  
                 return create_response(create_message(serializer.data, 1000), status.HTTP_201_CREATED)
+            
             raise Exception(serializer.errors)
+
         except Exception as e:
             return response_500(str(e))
-
+    
     @require_authentication
     def get(self, request):
         try:
@@ -156,3 +173,41 @@ class JobSaveView(APIView):
         except Exception as e:
             return response_500(str(e))
 
+class SchoolView(APIView):
+    def get(self, request):
+        try:
+            # Get query parameters
+            school_name = request.query_params.get('school_name', None)
+            is_subscribed = request.query_params.get('is_subscribed', None)
+            city = request.query_params.get('city', None)
+
+            # Build the query
+            filters = Q()
+            if school_name:
+                filters &= Q(school_name__icontains=school_name)
+            if is_subscribed:
+                filters &= Q(is_subscribed=is_subscribed)
+            if city:
+                filters &= Q(city__icontains=city)
+            
+            school = School.objects.filter(filters)
+            # Check for offset and limit in the request parameters
+            offset = request.query_params.get('offset', None)
+            limit = request.query_params.get('limit', None)
+
+            # Apply pagination if offset or limit are provided
+            if offset is not None or limit is not None:
+                paginator = LimitOffsetPagination()
+                paginator.offset = int(offset) if offset else 0
+                paginator.limit = int(limit) if limit else paginator.default_limit
+
+                result_page = paginator.paginate_queryset(school, request)
+                serializer = SchoolSerializer(result_page, many=True)
+                return create_response(create_message({"count":len(school), "data":serializer.data}, 1000), 
+                                       status.HTTP_200_OK)
+
+            # Serialize and return the filtered data
+            serializer = SchoolSerializer(school, many=True)
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))

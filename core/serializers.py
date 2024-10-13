@@ -11,7 +11,7 @@ class PackageSerializer(serializers.ModelSerializer):
 class TeacherSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     packages = serializers.SerializerMethodField()
-
+    password = serializers.CharField(write_only=True) 
     class Meta:
         model = Teacher
         fields = ('id', 'email', 'username', 'city', 'address', 'full_name', 'experience_year', 
@@ -31,6 +31,7 @@ class SchoolSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     packages = serializers.SerializerMethodField()
     school_logo = serializers.ImageField(required=False, allow_null=True)
+    password = serializers.CharField(write_only=True) 
     class Meta:
         model = School
         fields = ('id', 'email', 'username', 'city', 'address', 'school_name', 

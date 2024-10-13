@@ -17,4 +17,4 @@ class HireSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Hire
-        fields = ['id', 'status', 'teacher', 'school', 'job', 'teacher_id', 'school_id', 'job_id', 'cv']
+        fields = ['id', 'status', 'teacher', 'school', 'job', 'teacher_id', 'school_id', 'job_id', 'cv', 'cover_letter']
