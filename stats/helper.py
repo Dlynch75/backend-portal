@@ -1,11 +1,19 @@
 from school.models import JobPosting
 from teacher.models import Hire
+from django.db.models import Count
+
 
 card_code = {
     0: "TJA",
     1: "TJR",
     2: "TJP",
     3: "TPA",
+ }
+
+graphs_type = {
+    0: "line_chart",
+    1: "bar_chart",
+    2: "pie_chart",
  }
 
 def get_teacher_dashboard_cards(teacher):
@@ -45,5 +53,30 @@ def get_school_dashboard_cards(school):
                 "code": card_code[3]
             }
         ]
+    else:
+        raise Exception("Login as School")
+    
+def get_school_dashboard_graph(school):
+    if school.is_school:
+        # Get jobs and count of people who applied to each job in the school
+        job_applications = (
+            Hire.objects.filter(school=school)
+            .values('job__title')
+            .annotate(applicants_count=Count('id'))
+        )
+
+        job_titles = [job['job__title'] for job in job_applications]
+        applicants_counts = [job['applicants_count'] for job in job_applications]
+
+        return {
+            "graph_type":graphs_type[1],
+            "series": [
+                {
+                    "name": "Applications",
+                    "data": applicants_counts
+                }
+            ],
+            "categories": job_titles
+        }
     else:
         raise Exception("Login as School")

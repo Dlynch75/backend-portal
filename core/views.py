@@ -98,6 +98,24 @@ class UserProfileView(APIView):
             return response_500(str(e))
         
     @require_authentication
+    def get(self, request):
+        try:
+            # Get the user from the token
+            user = get_user_from_token(request)
+
+            # Use the appropriate serializer based on `is_school` or `is_teacher`
+            if user.is_teacher:
+                serializer = TeacherSerializer(user.teacher, many=False)
+            elif user.is_school:
+                serializer = SchoolSerializer(user.school, many=False)
+            else:
+                serializer = None
+                
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+        
+    @require_authentication
     def delete(self, request):
         try:
             # Get the user from the token
@@ -108,6 +126,9 @@ class UserProfileView(APIView):
             return create_response(create_message("User profile deleted successfully.", 1000), status.HTTP_200_OK)
         except Exception as e:
             return response_500(str(e))
+        
+        
+        
 class PackageListView(APIView):
     @require_authentication
     def get(self, request):
