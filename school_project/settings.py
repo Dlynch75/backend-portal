@@ -40,7 +40,7 @@ SECRET_KEY = 'django-insecure-)yn8^q@hhkpao6j82j82#=5#!c%#0glaz4tr&pu3m%i5ei%f#!
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    'school-hiring-portal-i1ermypeh-shahabs-projects-dc6aed94.vercel.app',  
+    '.vercel.app',  
     'localhost',
     '127.0.0.1'
 ]
