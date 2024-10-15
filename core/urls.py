@@ -6,6 +6,7 @@ urlpatterns = [
     path('login', LoginView.as_view(), name='login'),
     path('profile/update', UserProfileView.as_view(), name='profile_update'),
     path('profile/delete', UserProfileView.as_view(), name='profile_delete'),
+    path('profile', UserProfileView.as_view(), name='profile_delete'),
     path('package', PackageListView.as_view(), name='get_package'),
     path('package/<int:pk>', ApplyPackageView.as_view(), name='apply_package'),
 

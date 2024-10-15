@@ -30,8 +30,8 @@ extra_patterns_v1 = [
     path('school/', include('school.urls')),
     path('teacher/', include('teacher.urls')),
     path('payment/', include('payment.urls')),
-    
-    # Add more version 1 specific URLs here
+    path('stats/', include('stats.urls')),
+
 ]
 
 urlpatterns = [

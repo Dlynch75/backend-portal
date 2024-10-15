@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'teacher',
     'payment',
     'core',
+    'stats',
     'corsheaders',
 
 ]

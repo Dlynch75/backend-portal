@@ -14,7 +14,10 @@ class Hire(models.Model):
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
     school = models.ForeignKey(School, on_delete=models.CASCADE)
     job = models.ForeignKey(JobPosting, on_delete=models.CASCADE)
+    cover_letter = models.TextField(default=None, null=True, blank=True)
     cv = models.FileField(upload_to='cv_files/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  
+
 
     def __str__(self):
         return f'Hire: {self.teacher} for Job: {self.job} - Status: {self.status}'
