@@ -1,0 +1,54 @@
+# Python compiled files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+
+# Django migrations
+**/migrations/*
+
+# Ignore the local SQLite database
+db.sqlite3
+db.sqlite3-journal
+
+# Ignore environment variables and secret files
+.env
+*.env
+
+# Ignore Django static and media files
+/static/
+/media/
+/staticfiles/
+/mediafiles/
+
+# Ignore virtual environments
+venv/
+env/
+ENV/
+venv.bak/
+.venv/
+.venv.bak/
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore macOS system files
+.DS_Store
+
+# Ignore pytest cache
+.pytest_cache/
+
+# Ignore coverage report
+htmlcov/
+.coverage
+
+# Ignore local pipenv and poetry files
+Pipfile.lock
+poetry.lock
