@@ -14,3 +14,4 @@ def can_create_post(teacher):
         return True  # Unlimited package
 
     return teacher.teacher.applied_count < package_limit
+

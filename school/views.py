@@ -72,12 +72,14 @@ class JobPostingListCreateView(APIView):
     def post(self, request):
         try:
             school = get_user_from_token(request)
+            if not school.is_school:
+                raise Exception("Please login as school.")
             if not school.is_subscribed:
                 raise Exception("Please add Subscription to Apply.")
             if not can_create_post(school):
                 raise Exception("Post limit reached for your package this month.")
             
-            serializer = JobPostingSerializer(data=request.data)
+            serializer = JobPostingSerializer(data=request.data,  context={'user': school})
             if serializer.is_valid():
                 serializer.save()
                 # Increment the post count

@@ -17,6 +17,10 @@ class JobPostingSerializer(serializers.ModelSerializer):
         # Return True if the job is saved by the user, else False
         return JobSave.objects.filter(job=obj, teacher=user).exists()
     
+    def create(self, validated_data):
+        user = self.context['user']
+        validated_data['school'] = user.school
+        return super().create(validated_data)
         
 class JobSaveSerializer(serializers.ModelSerializer):
     job_id = serializers.PrimaryKeyRelatedField(source='job', queryset=JobPosting.objects.all(), write_only=True)

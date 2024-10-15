@@ -74,7 +74,7 @@ class HireListCreateView(APIView):
                     data['job_id'] = job.id
                     data['school_id'] = job.school.id
                     data['teacher_id'] = teacher.id 
-                   
+                    
                     # Handle CV upload if present
                     if 'cv' in request.FILES:
                         cv_file = request.FILES['cv']
