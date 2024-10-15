@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
+import cloudinary.uploader
 
 
 class HireListCreateView(APIView):    
@@ -73,24 +74,29 @@ class HireListCreateView(APIView):
                     data['job_id'] = job.id
                     data['school_id'] = job.school.id
                     data['teacher_id'] = teacher.id 
+                   
+                    # Handle CV upload if present
+                    if 'cv' in request.FILES:
+                        cv_file = request.FILES['cv']
+                        cloudinary_response = cloudinary.uploader.upload(cv_file, resource_type='raw',  flags="attachment" )
+                        cv_url = cloudinary_response['secure_url']
+                        data['cv'] = cv_url  # Save the URL to the request data
 
                     serializer = HireSerializer(data=data)
                     if serializer.is_valid():
                         serializer.save()
-                        # Increment the post count
+                        # Increment the applied count
                         teacher.teacher.applied_count += 1
                         teacher.teacher.save()
                         return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+                    else:
+                        raise Exception(serializer.errors)
                 else:
                     raise Exception("Job is Closed")
-                
-                raise Exception(serializer.errors)
             else:
                 raise Exception("Login as a Teacher")
         except Exception as e:
             return response_500(str(e))
-
-
 
 class HireDetailView(APIView):
     @require_authentication
@@ -99,22 +105,43 @@ class HireDetailView(APIView):
         hire = get_object_or_404(Hire, id=hire_id)
         serializer = HireSerializer(hire)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
     @require_authentication
     def put(self, request, hire_id):
         # Update a specific hire
         hire = get_object_or_404(Hire, id=hire_id)
-        serializer = HireSerializer(hire, data=request.data, partial=True)
+        old_cv_url = hire.cv  # Store the old CV URL for deletion if needed
+        data = request.data.copy()
+
+        # Handle CV upload if present
+        if 'cv' in request.FILES:
+            cv_file = request.FILES['cv']
+            cloudinary_response = cloudinary.uploader.upload(cv_file, resource_type='raw')
+            cv_url = cloudinary_response['secure_url']
+            data['cv'] = cv_url  # Update the CV URL
+
+            # delete the old CV from Cloudinary
+            if old_cv_url:
+                public_id = old_cv_url.split('/')[-1].split('.')[0]  # Extract public ID
+                cloudinary.uploader.destroy(public_id, resource_type='raw')
+
+        serializer = HireSerializer(hire, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @require_authentication
     def delete(self, request, hire_id):
         try:
             # Delete a specific hire
             hire = get_object_or_404(Hire, id=hire_id)
+
+            # Delete the CV from Cloudinary if it exists
+            if hire.cv:
+                public_id = hire.cv.split('/')[-1].split('.')[0]  # Extract public ID
+                cloudinary.uploader.destroy(public_id, resource_type='raw')
+
             hire.delete()
             return create_response(create_message("Deleted", 1000), status.HTTP_200_OK)
         except Exception as e:

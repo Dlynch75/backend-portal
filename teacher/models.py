@@ -15,7 +15,7 @@ class Hire(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE)
     job = models.ForeignKey(JobPosting, on_delete=models.CASCADE)
     cover_letter = models.TextField(default=None, null=True, blank=True)
-    cv = models.FileField(upload_to='cv_files/', null=True, blank=True)
+    cv = models.URLField(max_length=500, null=True, blank=True) 
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  
 
 

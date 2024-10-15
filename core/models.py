@@ -57,9 +57,9 @@ class Teacher(CustomUser):
 # School model inheriting from CustomUser
 class School(CustomUser):
     school_name = models.CharField(max_length=255)
-    school_logo = models.ImageField(upload_to='images/', null=True, blank=True)
+    school_logo = models.URLField(max_length=500, null=True, blank=True) 
     post_count= models.IntegerField(default=0)
-
+    
     class Meta:
         verbose_name = 'School'
         

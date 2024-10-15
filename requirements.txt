@@ -11,3 +11,4 @@ gunicorn==20.1.0
 whitenoise
 python-dotenv
 psycopg2-binary
+cloudinary

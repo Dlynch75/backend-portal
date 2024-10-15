@@ -1,16 +1,16 @@
 from django.db.models import Q
 from django.shortcuts import render
-
 # Create your views here.
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from utils.response import create_message, create_response
 from utils.utils import  assign_user_to_package, get_user_from_token, require_authentication, response_500
 from .models import CustomUser, Package, School, Teacher
 from .serializers import PackageSerializer, TeacherSerializer, SchoolSerializer
+import cloudinary.uploader
+
 
 class UserSignupView(APIView):
     def post(self, request):
@@ -24,21 +24,33 @@ class UserSignupView(APIView):
             email = request.data.get('email')
             username = request.data.get('username')
             if CustomUser.objects.filter(Q(email=email) | Q(username=username)).exists():
-                raise Exception(
-                    "A user with this email or username already exists.")
+                raise Exception("A user with this email or username already exists.")
 
             # Use the appropriate serializer based on `is_school`
             if is_school:
                 serializer = SchoolSerializer(data=request.data)
+                if serializer.is_valid():
+                    logo = request.FILES.get('school_logo')
+                    if logo:
+                        cloudinary_response = cloudinary.uploader.upload(logo)
+                        # Get the URL of the uploaded logo
+                        image_url = cloudinary_response['secure_url']
+                        # Save the logo URL to the serializer's validated data
+                        serializer.validated_data['school_logo'] = image_url
+                    
+                    serializer.save()
+                    return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+                else:
+                    raise Exception(serializer.errors)
             else:
                 serializer = TeacherSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
-            else:
-                raise Exception(serializer.errors)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+                else:
+                    raise Exception(serializer.errors)
         except Exception as e:
-            return response_500(str(e))
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LoginView(APIView):
@@ -50,7 +62,7 @@ class LoginView(APIView):
             user = CustomUser.objects.filter(email=email).first()
             # Check if user exists and password is correct
             if user is None or not user.check_password(password):
-                raise Exception("Email or Passowrd Invalied")
+                raise Exception("Email or Password Invalid")
             
             # Generate tokens
             refresh = RefreshToken.for_user(user)
@@ -63,6 +75,7 @@ class LoginView(APIView):
             elif user.is_school:
                 school = School.objects.get(id=user.id)
                 user_data = SchoolSerializer(school,many=False)
+                print(user_data.data)
             
             return create_response(create_message({
                 "user": user_data.data,
@@ -86,6 +99,14 @@ class UserProfileView(APIView):
                 serializer = TeacherSerializer(user.teacher, data=request.data, partial=True)
             elif user.is_school:
                 serializer = SchoolSerializer(user.school, data=request.data, partial=True)
+
+                # Handle logo upload if present
+                if 'school_logo' in request.FILES:
+                    file = request.FILES['school_logo']
+                    cloudinary_response = cloudinary.uploader.upload(file)
+                    image_url = cloudinary_response['secure_url']
+                    request.data['school_logo'] = image_url 
+
             else:
                 serializer = None
             
@@ -96,6 +117,7 @@ class UserProfileView(APIView):
                 raise Exception(serializer.errors if serializer else "Invalid user role.")
         except Exception as e:
             return response_500(str(e))
+        
         
     @require_authentication
     def get(self, request):

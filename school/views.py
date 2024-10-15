@@ -76,6 +76,7 @@ class JobPostingListCreateView(APIView):
                 raise Exception("Please add Subscription to Apply.")
             if not can_create_post(school):
                 raise Exception("Post limit reached for your package this month.")
+            
             serializer = JobPostingSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
