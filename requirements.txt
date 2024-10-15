@@ -8,3 +8,4 @@ PyJWT==2.9.0
 sqlparse==0.5.1
 stripe
 gunicorn==20.1.0
+whitenoise
