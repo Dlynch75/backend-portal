@@ -1,4 +1,22 @@
 from django.conf import settings
+from django.shortcuts import render
+from rest_framework.views import APIView
+import stripe
+from django.conf import settings
+from django.shortcuts import redirect
+from django.http import JsonResponse
+from core.models import CustomUser, Package, UserPackage
+from payment.helper import get_price_id
+from payment.models import Invoice
+from school_project.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+from utils.response import create_message, create_response
+from utils.utils import get_user_from_token, require_authentication, response_500
+import stripe
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+stripe.api_key = STRIPE_SECRET_KEY
+from rest_framework import status
+
 
 def get_price_id(subscription_type):
     price_id_map = {
@@ -14,3 +32,36 @@ def get_price_id(subscription_type):
 
     # Return the price ID if the subscription type matches
     return price_id_map.get(subscription_type, None)  # Returns None if no match is found
+
+# Separate functions for handling events
+
+def handle_invoice_created(user, invoice):
+    Invoice.objects.create(
+        user=user,
+        invoice_id=invoice['id'],
+        amount=invoice['amount_due'] / 100,  # Convert cents to dollars
+        currency=invoice['currency'],
+        status=invoice['status'],
+        created_at=invoice['created'],
+    )
+
+def handle_invoice_payment_succeeded(user, invoice):
+    Invoice.objects.filter(invoice_id=invoice['id']).update(
+        status='paid',
+        payment_date=invoice.get('paid_at'),
+    )
+    user.is_subscribed = True
+    user.save()
+
+def handle_invoice_payment_failed(user, invoice):
+    Invoice.objects.filter(invoice_id=invoice['id']).update(
+        status='failed',
+        canceled_at=invoice.get('attempted'),
+    )
+    user.is_subscribed = False
+    user.save()
+
+def handle_subscription_deleted(user, subscription):
+    user.is_subscribed = False
+    user.save()
+    UserPackage.objects.filter(user=user).delete() if UserPackage.objects.filter(user=user).exists() else None
