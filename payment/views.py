@@ -5,7 +5,7 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.http import JsonResponse
 from core.models import CustomUser, Package, UserPackage
-from payment.helper import get_price_id, handle_invoice_created, handle_invoice_payment_failed, handle_invoice_payment_succeeded, handle_subscription_deleted
+from payment.helper import get_price_id, handle_invoice_created, handle_invoice_payment_failed, handle_invoice_payment_succeeded
 from payment.models import Invoice
 from school_project.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from utils.response import create_message, create_response
@@ -111,8 +111,8 @@ def stripe_webhook(request):
         elif event['type'] == 'invoice.payment_failed':
             handle_invoice_payment_failed(user, data_object)
 
-        elif event['type'] == 'customer.subscription.deleted':
-            handle_subscription_deleted(user, data_object)
+        # elif event['type'] == 'customer.subscription.deleted':
+        #     handle_subscription_deleted(user, data_object)
 
         return JsonResponse({'status': 'success'})
 
