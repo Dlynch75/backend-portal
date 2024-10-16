@@ -114,7 +114,6 @@ def handle_invoice_payment_failed(user, invoice):
         stripe_subscription_id = user.stripe_subscription_id
         # Cancel the Stripe subscription
         stripe.Subscription.delete(stripe_subscription_id)
-
         # Optional: Update user record in your database
         user.stripe_subscription_id = None
         
@@ -124,13 +123,8 @@ def handle_invoice_payment_failed(user, invoice):
 def handle_subscription_deleted(user, invoice):
 
     if user.stripe_subscription_id:
-        stripe_subscription_id = user.stripe_subscription_id
-        # Cancel the Stripe subscription
-        stripe.Subscription.delete(stripe_subscription_id)
-
         # Optional: Update user record in your database
         user.stripe_subscription_id = None
-        # Extract the Stripe plan ID from the invoice
         
     price_id = invoice['lines']['data'][0]['plan']['id']
     # Get the corresponding package
