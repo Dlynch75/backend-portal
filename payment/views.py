@@ -24,7 +24,7 @@ class CreatePaymentSessionView(APIView):
     @require_authentication
     def get(self, request, pk):
         user = get_user_from_token(request)
-        domain_url = "https://teacher-portal-omega.vercel.app/"  # Your domain URL
+        domain_url = "https://teacher-portal-omega.vercel.app"  # Your domain URL
         package_id = pk
         package = Package.objects.get(id=package_id)
         price_id = get_price_id(package.package_type)
@@ -49,7 +49,7 @@ class CreatePaymentSessionView(APIView):
                         'quantity': 1,
                     },
                 ],
-                success_url=domain_url + f'success/{package_id}',
+                success_url=domain_url + f'/dashboard/success/{package_id}',
                 cancel_url=domain_url + 'failure/',
                 customer=user.stripe_subscription_id,
             )
