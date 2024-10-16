@@ -97,10 +97,10 @@ def stripe_webhook(request):
             print("customer_id is "+ customer_id)
             user = CustomUser.objects.get(stripe_subscription_id=customer_id)
         except ObjectDoesNotExist:
-            return HttpResponse(status=404, content="User not found "+ customer_id)
+            return HttpResponse(status=404, content="User not found ")
         
-        print("User is "+user)
         print("Event is "+event['type'] )
+        
         # Process based on event type
         if event['type'] == 'invoice.created':
             handle_invoice_created(user, data_object)
