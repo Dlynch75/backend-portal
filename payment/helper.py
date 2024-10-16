@@ -4,18 +4,13 @@ from rest_framework.views import APIView
 import stripe
 from django.conf import settings
 from django.shortcuts import redirect
-from django.http import JsonResponse
-from core.models import CustomUser, Package, UserPackage
-from payment.helper import get_price_id
+from core.models import  UserPackage
 from payment.models import Invoice
 from school_project.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from utils.response import create_message, create_response
 from utils.utils import get_user_from_token, require_authentication, response_500
 import stripe
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
 stripe.api_key = STRIPE_SECRET_KEY
-from rest_framework import status
 
 
 def get_price_id(subscription_type):
