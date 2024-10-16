@@ -120,3 +120,34 @@ def handle_invoice_payment_failed(user, invoice):
         
     user.is_subscribed = False
     user.save()
+    
+def handle_subscription_deleted(user, invoice):
+
+    if user.stripe_subscription_id:
+        stripe_subscription_id = user.stripe_subscription_id
+        # Cancel the Stripe subscription
+        stripe.Subscription.delete(stripe_subscription_id)
+
+        # Optional: Update user record in your database
+        user.stripe_subscription_id = None
+        # Extract the Stripe plan ID from the invoice
+        
+    price_id = invoice['lines']['data'][0]['plan']['id']
+    # Get the corresponding package
+    package_type = get_package_by_price_id(price_id)
+    package = Package.objects.get(package_type=package_type)
+
+    # Create a new invoice record for a failed payment (different from invoice created)
+    Invoice.objects.create(
+        user=user,
+        invoice_id=invoice['id'],
+        amount=invoice['amount_due'] / 100,  # Stripe uses cents
+        currency=invoice['currency'],
+        status='removed',
+        canceled_at= datetime.fromtimestamp(invoice['created']),
+        pdf_url=invoice.get('invoice_pdf', ''),
+        package_type=package
+    )
+    user.is_subscribed = False
+    user.save()
+    UserPackage.objects.filter(user=user).delete() if UserPackage.objects.filter(user=user).exists() else None
