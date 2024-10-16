@@ -53,13 +53,13 @@ def handle_invoice_payment_failed(user, invoice):
         status='failed',
         canceled_at=invoice.get('attempted'),
     )
-    if user.stripe_customer_id:
-        stripe_subscription_id = user.stripe_customer_id
+    if user.stripe_subscription_id:
+        stripe_subscription_id = user.stripe_subscription_id
         # Cancel the Stripe subscription
         stripe.Subscription.delete(stripe_subscription_id)
 
         # Optional: Update user record in your database
-        user.stripe_customer_id = None
+        user.stripe_subscription_id = None
         
     user.is_subscribed = False
     user.save()

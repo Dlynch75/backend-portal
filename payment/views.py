@@ -95,7 +95,7 @@ def stripe_webhook(request):
 
         try:
             print("customer_id is "+ customer_id)
-            user = CustomUser.objects.get(stripe_customer_id=customer_id)
+            user = CustomUser.objects.get(stripe_subscription_id=customer_id)
         except ObjectDoesNotExist:
             return HttpResponse(status=404, content="User not found "+ customer_id)
         
