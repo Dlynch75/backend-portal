@@ -3,7 +3,7 @@ from core.models import CustomUser, Package  # Adjust import based on your struc
 
 class Invoice(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.PROTECT)  # Prevent cascade delete
-    invoice_id = models.CharField(max_length=255, unique=True)  # Unique ID from Stripe
+    invoice_id = models.CharField(max_length=255)  
     amount = models.DecimalField(max_digits=10, decimal_places=2)  # Amount charged
     currency = models.CharField(max_length=10)  # Currency code (e.g., USD)
     status = models.CharField(max_length=50)  # e.g., 'paid', 'pending', 'canceled', etc.
