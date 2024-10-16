@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate
 class PackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Package
-        fields = ('id', 'title', 'package_type', 'description', 'offer', 'created_at')
+        fields = ('id', 'title', 'package_type', 'description', 'offer', 'created_at', 'amount')
 
 
 class TeacherSerializer(serializers.ModelSerializer):
