@@ -13,12 +13,12 @@ from utils.utils import get_user_from_token, require_authentication, response_50
 import stripe
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-stripe.api_key = STRIPE_SECRET_KEY
 from rest_framework import status
 from django.core.exceptions import ObjectDoesNotExist
 
+stripe.api_key = STRIPE_SECRET_KEY
 
-# Create your views here.
+
 
 class CreatePaymentSessionView(APIView):
     @require_authentication
