@@ -49,7 +49,7 @@ class CreatePaymentSessionView(APIView):
                         'quantity': 1,
                     },
                 ],
-                success_url=domain_url + f'/dashboard/success/{package_id}',
+                success_url=domain_url + f'/dashboard/success',
                 cancel_url=domain_url + 'failure/',
                 customer=user.stripe_subscription_id,
             )

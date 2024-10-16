@@ -64,7 +64,7 @@ def handle_invoice_created(user, invoice):
         status="created",  
         created_at= datetime.fromtimestamp(invoice['created']) ,
         pdf_url=invoice.get('invoice_pdf', ''), 
-        package_type=package_type
+        package_type=package
     )
     user.is_subscribed = True
     user.save()
@@ -75,7 +75,9 @@ def handle_invoice_payment_succeeded(user, invoice):
     price_id = invoice['lines']['data'][0]['plan']['id']
     # Get the corresponding package
     package_type = get_package_by_price_id(price_id)
-    # Create a new invoice record for a successful payment (different from invoice created)
+    package = Package.objects.get(package_type=package_type)
+    assign_user_to_package(user, package.id)
+    
     Invoice.objects.create(
         user=user,
         invoice_id=invoice['id'],
@@ -84,7 +86,7 @@ def handle_invoice_payment_succeeded(user, invoice):
         status='paid',
         payment_date= datetime.fromtimestamp(invoice['created']),
         pdf_url=invoice.get('invoice_pdf', ''),
-        package_type=package_type
+        package_type=package
     )
     user.is_subscribed = True
     user.save()
@@ -95,6 +97,8 @@ def handle_invoice_payment_failed(user, invoice):
     price_id = invoice['lines']['data'][0]['plan']['id']
     # Get the corresponding package
     package_type = get_package_by_price_id(price_id)
+    package = Package.objects.get(package_type=package_type)
+
     # Create a new invoice record for a failed payment (different from invoice created)
     Invoice.objects.create(
         user=user,
@@ -104,7 +108,7 @@ def handle_invoice_payment_failed(user, invoice):
         status='failed',
         canceled_at= datetime.fromtimestamp(invoice['created']),
         pdf_url=invoice.get('invoice_pdf', ''),
-        package_type=package_type
+        package_type=package
     )
     if user.stripe_subscription_id:
         stripe_subscription_id = user.stripe_subscription_id

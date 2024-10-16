@@ -11,7 +11,7 @@ class Invoice(models.Model):
     payment_date = models.DateTimeField(null=True, blank=True)  # Date of payment if successful
     canceled_at = models.DateTimeField(null=True, blank=True)  
     pdf_url = models.URLField(max_length=1024, null=True, blank=True)  # Store the invoice PDF URL
-    package_type = models.CharField(max_length=100, default="")
+    package_type = models.ForeignKey(Package, on_delete=models.PROTECT, default=None,  null=True) 
 
     def __str__(self):
         return f"Invoice {self.invoice_id} for {self.user.email} - Status: {self.status}"
