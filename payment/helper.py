@@ -10,6 +10,8 @@ from school_project.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from utils.response import create_message, create_response
 from utils.utils import assign_user_to_package, get_user_from_token, require_authentication, response_500
 import stripe
+from datetime import datetime
+
 stripe.api_key = STRIPE_SECRET_KEY
 
 
@@ -60,7 +62,7 @@ def handle_invoice_created(user, invoice):
         amount=invoice['amount_due'] / 100,  # Stripe uses cents
         currency=invoice['currency'],
         status="created",  
-        created_at=invoice['created'],
+        created_at= datetime.fromtimestamp(invoice['created']) ,
         pdf_url=invoice.get('invoice_pdf', ''), 
         package_type=package_type
     )
@@ -80,7 +82,7 @@ def handle_invoice_payment_succeeded(user, invoice):
         amount=invoice['amount_paid'] / 100,  # Stripe uses cents
         currency=invoice['currency'],
         status='paid',
-        payment_date=invoice.get('created'),  # Use Stripe's timestamp for payment success
+        payment_date= datetime.fromtimestamp(invoice['created']),
         pdf_url=invoice.get('invoice_pdf', ''),
         package_type=package_type
     )
@@ -100,7 +102,7 @@ def handle_invoice_payment_failed(user, invoice):
         amount=invoice['amount_due'] / 100,  # Stripe uses cents
         currency=invoice['currency'],
         status='failed',
-        canceled_at=invoice.get('attempted'),  # Use Stripe's attempt timestamp
+        canceled_at= datetime.fromtimestamp(invoice['created']),
         pdf_url=invoice.get('invoice_pdf', ''),
         package_type=package_type
     )
