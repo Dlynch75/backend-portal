@@ -49,8 +49,11 @@ class Teacher(CustomUser):
     full_name = models.CharField(max_length=100)
     experience_year = models.PositiveIntegerField()
     applied_count= models.IntegerField(default=0)
-
-
+    teaching_subject = models.CharField(max_length=100,default=None, blank=True, null=True )
+    highest_qualification = models.CharField(max_length=100,default=None, blank=True, null=True )
+    phone = models.CharField(max_length=15,default=None, blank=True, null=True )
+    dob = models.DateField(default=None, blank=True, null=True )
+    
     class Meta:
         verbose_name = 'Teacher'
 

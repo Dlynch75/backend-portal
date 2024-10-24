@@ -15,6 +15,8 @@ import cloudinary.uploader
 class UserSignupView(APIView):
     def post(self, request):
         try:
+            print(request.data)
+
             is_school = request.data.get('is_school')
 
             if is_school is None:
