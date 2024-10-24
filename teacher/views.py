@@ -69,6 +69,11 @@ class HireListCreateView(APIView):
                 if not can_create_post(teacher):
                     raise Exception("Post limit reached for your package this month.")
                 
+                # Check if the teacher has already applied to this job
+                existing_hire = Hire.objects.filter(teacher=teacher, job=job).first()
+                if existing_hire:
+                    raise Exception("You have already applied to this job.")
+                
                 if job.status == "open":
                     data = request.data.copy()
                     data['job_id'] = job.id
@@ -78,7 +83,7 @@ class HireListCreateView(APIView):
                     # Handle CV upload if present
                     if 'cv' in request.FILES:
                         cv_file = request.FILES['cv']
-                        cloudinary_response = cloudinary.uploader.upload(cv_file, resource_type='raw',  flags="attachment" )
+                        cloudinary_response = cloudinary.uploader.upload(cv_file, resource_type='raw', flags="attachment")
                         cv_url = cloudinary_response['secure_url']
                         data['cv'] = cv_url  # Save the URL to the request data
 
