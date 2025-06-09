@@ -119,3 +119,16 @@ def assign_user_to_package(user, package_id):
         raise Exception("Invalid user type. Must be a Teacher or School.")
 
     return user_package
+
+
+# utils/email.py
+from django.core.mail import send_mail
+
+def send_notification_email(subject, message, recipients):
+    send_mail(
+        subject,
+        message,
+        'connect@gulfteachers.com',
+        recipients,
+        fail_silently=False,
+    )

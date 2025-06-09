@@ -8,7 +8,8 @@ from core.models import  Package, UserPackage
 from payment.models import Invoice
 from school_project.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from utils.response import create_message, create_response
-from utils.utils import assign_user_to_package, get_user_from_token, require_authentication, response_500
+from utils.utils import assign_user_to_package, get_user_from_token, require_authentication, response_500, \
+    send_notification_email
 import stripe
 from datetime import datetime
 
@@ -90,6 +91,17 @@ def handle_invoice_payment_succeeded(user, invoice):
     )
     user.is_subscribed = True
     user.save()
+
+    # Email sent
+    subject = f"New Subscription - {user.email}"
+    message = (
+        f"User {user.username} ({user.email}) just subscribed.\n"
+        f"Package: {package.package_type}\n"
+        f"Amount Paid: {invoice['amount_paid'] / 100} {invoice['currency'].upper()}\n"
+        f"Date: {datetime.fromtimestamp(invoice['created'])}"
+    )
+
+    send_notification_email(subject, message, ['connect@gulfteachers.com'])
 
 
 def handle_invoice_payment_failed(user, invoice):

@@ -12,3 +12,5 @@ whitenoise
 python-dotenv
 psycopg2-binary
 cloudinary
+python-decouple
+pycountry
