@@ -5,7 +5,7 @@ from school.models import JobPosting
 from teacher.helper import can_create_post
 from teacher.models import Hire
 from utils.response import create_message, create_response
-from utils.utils import get_user_from_token, require_authentication, response_500
+from utils.utils import get_user_from_token, require_authentication, response_500, send_notification_email
 from .serializers import HireSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -93,6 +93,22 @@ class HireListCreateView(APIView):
                         # Increment the applied count
                         teacher.teacher.applied_count += 1
                         teacher.teacher.save()
+
+                        # Email sent
+                        subject = f"New Teacher Application - {teacher.username}"
+                        message = (
+                            f"A new teacher has applied for the job: {job.title}\n\n"
+                            f"Teacher Name: {teacher.username}\n"
+                            f"Email: {teacher.email}\n"
+                            f"Phone: {teacher.teacher.phone or 'N/A'}\n"
+                            f"Experience: {teacher.teacher.experience_year} years\n"
+                            f"School: {job.school.school_name}\n"
+                            f"Cover Letter:\n{data.get('cover_letter', 'N/A')}"
+                        )
+
+                        recipients = ['connect@gulfteachers.com', job.school.email]
+                        send_notification_email(subject, message, recipients)
+
                         return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
                     else:
                         raise Exception(serializer.errors)

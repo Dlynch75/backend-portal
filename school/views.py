@@ -13,8 +13,8 @@ from .models import JobPosting, JobSave
 from .serializers import JobPostingSerializer, JobSaveSerializer
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
+import pycountry
 
-logger = logging.getLogger(__name__)
 
 # Create your views here.
 class JobPostingListCreateView(APIView):
@@ -212,5 +212,30 @@ class SchoolView(APIView):
             # Serialize and return the filtered data
             serializer = SchoolSerializer(school, many=True)
             return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+
+class CountryView(APIView):
+
+
+
+    def get(self, request):
+        try:
+            IMPORTANT_COUNTRIES = [
+                "United States", "United Kingdom", "Canada", "India", "Australia", "Germany", "France", "Japan",
+                "China",
+                "Brazil"
+            ]
+
+            search = request.query_params.get('search', None)
+
+            if search:
+                # Return all countries (optionally filtered by search)
+                all_countries = [country.name for country in pycountry.countries]
+                filtered = [name for name in all_countries if search in name.lower()]
+                return  create_response(create_message({"countries": filtered}, 1000), status.HTTP_200_OK)
+            else:
+                return create_response(create_message({"countries": IMPORTANT_COUNTRIES}, 1000), status.HTTP_200_OK)
         except Exception as e:
             return response_500(str(e))
