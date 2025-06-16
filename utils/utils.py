@@ -122,13 +122,26 @@ def assign_user_to_package(user, package_id):
 
 
 # utils/email.py
-from django.core.mail import send_mail
+import smtplib
+from email.mime.text import MIMEText
+
+EMAIL_HOST = "smtp.office365.com"
+EMAIL_PORT = 587
+EMAIL_HOST_USER = "connect@gulfteachers.com"
+EMAIL_HOST_PASSWORD = "Gulfteachers99!"
 
 def send_notification_email(subject, message, recipients):
-    send_mail(
-        subject,
-        message,
-        'connect@gulfteachers.com',
-        recipients,
-        fail_silently=False,
-    )
+    try:
+        msg = MIMEText(message)
+        msg["Subject"] = subject
+        msg["From"] = EMAIL_HOST_USER
+        msg["To"] = ", ".join(recipients)
+
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+        server.starttls()
+        server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
+        server.sendmail(EMAIL_HOST_USER, recipients, msg.as_string())
+        server.quit()
+        print("✅ Email sent successfully!")
+    except Exception as e:
+        print(f"❌ Error sending email: {e}")
