@@ -16,7 +16,7 @@ class TeacherSerializer(serializers.ModelSerializer):
         model = Teacher
         fields = ('id', 'email', 'username', 'city', 'address', 'full_name', 'experience_year', 
                   'is_school', 'is_teacher', 'packages', 'is_subscribed', 'password', 'teaching_subject', 'highest_qualification',
-                  'phone','dob')
+                  'phone','dob', 'has_used_trial')
 
     def get_packages(self, obj):
         user_packages = UserPackage.objects.filter(teacher=obj)

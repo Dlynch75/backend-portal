@@ -35,6 +35,7 @@ class CustomUser(AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
     last_reset_date = models.DateField(default=datetime.now)
+    has_used_trial = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
