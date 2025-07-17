@@ -106,6 +106,9 @@ def assign_user_to_package(user, package_id):
         user.last_reset_date = date.today()
         user.teacher.applied_count = 0
         user.teacher.save()
+        # Mark trial flag if assigning a trial
+        if package.package_type == "trial_teacher":
+            user.has_used_trial = True
         user.save()
     elif user.is_school:
         UserPackage.objects.filter(school=user.school).delete()
@@ -114,6 +117,9 @@ def assign_user_to_package(user, package_id):
         user.school.post_count = 0
         user.last_reset_date = date.today()
         user.school.save()
+        # Mark trial flag if assigning a trial
+        if package.package_type == "trial_teacher":
+            user.has_used_trial = True
         user.save()
     else:
         raise Exception("Invalid user type. Must be a Teacher or School.")
