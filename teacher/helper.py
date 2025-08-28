@@ -15,7 +15,7 @@ def can_create_post(teacher):
     # Check if it's a trial package
     if user_package.package.package_type == 'trial_teacher':
         # Check if 30 days have passed since created_at
-        if (date.today() - user_package.created_at.date()).days > 30:
+        if (date.today() - user_package.created_at.date()).days > user_package.package.offer.get("allow_days"):
             return False  # Trial expired
         else:
             return True  # Trial still active

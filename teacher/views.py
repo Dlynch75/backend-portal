@@ -96,14 +96,18 @@ class HireListCreateView(APIView):
 
                         # Email sent
                         subject = f"New Teacher Application - {teacher.username}"
+                        cv_url = data.get('cv', 'N/A')
+                        cover_letter = data.get('cover_letter', 'N/A')
+
                         message = (
                             f"A new teacher has applied for the job: {job.title}\n\n"
                             f"Teacher Name: {teacher.username}\n"
                             f"Email: {teacher.email}\n"
                             f"Phone: {teacher.teacher.phone or 'N/A'}\n"
                             f"Experience: {teacher.teacher.experience_year} years\n"
-                            f"School: {job.school.school_name}\n"
-                            f"Cover Letter:\n{data.get('cover_letter', 'N/A')}"
+                            f"School: {job.school.school_name}\n\n"
+                            f"Cover Letter:\n{cover_letter}\n\n"
+                            f"CV Download Link: {cv_url}\n"
                         )
 
                         recipients = ['connect@gulfteachers.com', job.school.email]
