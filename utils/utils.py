@@ -130,24 +130,28 @@ def assign_user_to_package(user, package_id):
 # utils/email.py
 import smtplib
 from email.mime.text import MIMEText
+from django.core.mail import EmailMessage
+import requests
+
 
 EMAIL_HOST = "smtp.office365.com"
 EMAIL_PORT = 587
 EMAIL_HOST_USER = "connect@gulfteachers.com"
 EMAIL_HOST_PASSWORD = "Gulfteachers99!"
 
-def send_notification_email(subject, message, recipients):
-    try:
-        msg = MIMEText(message)
-        msg["Subject"] = subject
-        msg["From"] = EMAIL_HOST_USER
-        msg["To"] = ", ".join(recipients)
+def send_notification_email(subject, message, recipients, cv_url=None):
+    email = EmailMessage(
+        subject=subject,
+        body=message,
+        from_email="no-reply@gulfteachers.com",
+        to=recipients,
+    )
 
-        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
-        server.starttls()
-        server.login(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)
-        server.sendmail(EMAIL_HOST_USER, recipients, msg.as_string())
-        server.quit()
-        print("✅ Email sent successfully!")
-    except Exception as e:
-        print(f"❌ Error sending email: {e}")
+    # If CV URL exists, download and attach it
+    if cv_url and cv_url != "N/A":
+        response = requests.get(cv_url)
+        if response.status_code == 200:
+            filename = cv_url.split("/")[-1]  # extract file name from URL
+            email.attach(filename, response.content, "application/pdf")
+
+    email.send()

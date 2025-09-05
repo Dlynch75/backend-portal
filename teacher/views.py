@@ -109,9 +109,8 @@ class HireListCreateView(APIView):
                             f"Cover Letter:\n{cover_letter}\n\n"
                             f"CV Download Link: {cv_url}\n"
                         )
-
                         recipients = ['connect@gulfteachers.com', job.school.email]
-                        send_notification_email(subject, message, recipients)
+                        send_notification_email(subject, message, recipients, cv_url)
 
                         return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
                     else:
