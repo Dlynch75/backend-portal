@@ -143,7 +143,7 @@ def send_notification_email(subject, message, recipients, cv_url=None):
     email = EmailMessage(
         subject=subject,
         body=message,
-        from_email="no-reply@gulfteachers.com",
+        from_email="connect@gulfteachers.com",  # same as login user
         to=recipients,
     )
 

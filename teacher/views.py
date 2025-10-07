@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 import cloudinary.uploader
+from django.db import transaction
 
 
 class HireListCreateView(APIView):    
@@ -59,67 +60,72 @@ class HireListCreateView(APIView):
     def post(self, request):
         try:
             teacher = get_user_from_token(request)
-            if teacher.is_teacher:
-                # Create a new hire for a specific job
-                job_id = request.query_params.get('job_id', None)
-                job = get_object_or_404(JobPosting, id=job_id)
-                
-                if not teacher.is_subscribed:
-                    raise Exception("Please add Subscription to Apply.")
-                if not can_create_post(teacher):
-                    raise Exception("Post limit reached for your package this month.")
-                
-                # Check if the teacher has already applied to this job
-                existing_hire = Hire.objects.filter(teacher=teacher, job=job).first()
-                if existing_hire:
-                    raise Exception("You have already applied to this job.")
-                
-                if job.status == "open":
-                    data = request.data.copy()
-                    data['job_id'] = job.id
-                    data['school_id'] = job.school.id
-                    data['teacher_id'] = teacher.id 
-                    
-                    # Handle CV upload if present
-                    if 'cv' in request.FILES:
-                        cv_file = request.FILES['cv']
-                        cloudinary_response = cloudinary.uploader.upload(cv_file, resource_type='raw', flags="attachment")
-                        cv_url = cloudinary_response['secure_url']
-                        data['cv'] = cv_url  # Save the URL to the request data
 
-                    serializer = HireSerializer(data=data)
-                    if serializer.is_valid():
-                        serializer.save()
-                        # Increment the applied count
-                        teacher.teacher.applied_count += 1
-                        teacher.teacher.save()
-
-                        # Email sent
-                        subject = f"New Teacher Application - {teacher.username}"
-                        cv_url = data.get('cv', 'N/A')
-                        cover_letter = data.get('cover_letter', 'N/A')
-
-                        message = (
-                            f"A new teacher has applied for the job: {job.title}\n\n"
-                            f"Teacher Name: {teacher.username}\n"
-                            f"Email: {teacher.email}\n"
-                            f"Phone: {teacher.teacher.phone or 'N/A'}\n"
-                            f"Experience: {teacher.teacher.experience_year} years\n"
-                            f"School: {job.school.school_name}\n\n"
-                            f"Cover Letter:\n{cover_letter}\n\n"
-                            f"CV Download Link: {cv_url}\n"
-                        )
-                        recipients = ['connect@gulfteachers.com', job.school.email]
-                        send_notification_email(subject, message, recipients, cv_url)
-
-                        return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
-                    else:
-                        raise Exception(serializer.errors)
-                else:
-                    raise Exception("Job is Closed")
-            else:
+            if not teacher.is_teacher:
                 raise Exception("Login as a Teacher")
+
+            # Get job
+            job_id = request.query_params.get('job_id', None)
+            job = get_object_or_404(JobPosting, id=job_id)
+
+            # Validations
+            if not teacher.is_subscribed:
+                raise Exception("Please add Subscription to Apply.")
+            if not can_create_post(teacher):
+                raise Exception("Post limit reached for your package this month.")
+            if Hire.objects.filter(teacher=teacher, job=job).exists():
+                raise Exception("You have already applied to this job.")
+            if job.status != "open":
+                raise Exception("Job is Closed")
+
+            data = request.data.copy()
+            data['job_id'] = job.id
+            data['school_id'] = job.school.id
+            data['teacher_id'] = teacher.id
+
+            # Upload CV if provided
+            if 'cv' in request.FILES:
+                cv_file = request.FILES['cv']
+                cloudinary_response = cloudinary.uploader.upload(
+                    cv_file, resource_type='raw', flags="attachment"
+                )
+                data['cv'] = cloudinary_response['secure_url']
+
+            serializer = HireSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+
+            # ✅ Atomic block starts here
+            with transaction.atomic():
+                serializer.save()
+
+                # Increment applied count
+                teacher.teacher.applied_count += 1
+                teacher.teacher.save()
+
+                # Prepare and send email (you can move this outside atomic if async)
+                subject = f"New Teacher Application - {teacher.username}"
+                cv_url = data.get('cv', 'N/A')
+                cover_letter = data.get('cover_letter', 'N/A')
+
+                message = (
+                    f"A new teacher has applied for the job: {job.title}\n\n"
+                    f"Teacher Name: {teacher.username}\n"
+                    f"Email: {teacher.email}\n"
+                    f"Phone: {teacher.teacher.phone or 'N/A'}\n"
+                    f"Experience: {teacher.teacher.experience_year} years\n"
+                    f"School: {job.school.school_name}\n\n"
+                    f"Cover Letter:\n{cover_letter}\n\n"
+                    f"CV Download Link: {cv_url}\n"
+                )
+
+                recipients = ['connect@gulfteachers.com', job.school.email]
+                send_notification_email(subject, message, recipients, cv_url)
+
+            # ✅ Atomic block ends (if no exception, DB commit happens)
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+
         except Exception as e:
+            # Any exception will rollback automatically
             return response_500(str(e))
 
 class HireDetailView(APIView):
