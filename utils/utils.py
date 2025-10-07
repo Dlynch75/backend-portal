@@ -133,25 +133,44 @@ from email.mime.text import MIMEText
 from django.core.mail import EmailMessage
 import requests
 
+import logging
+import requests
+from django.core.mail import EmailMessage
 
-EMAIL_HOST = "smtp.office365.com"
-EMAIL_PORT = 587
-EMAIL_HOST_USER = "connect@gulfteachers.com"
-EMAIL_HOST_PASSWORD = "Gulfteachers99!"
+# Configure logger (usually placed at top of your module)
+logger = logging.getLogger(__name__)
 
 def send_notification_email(subject, message, recipients, cv_url=None):
-    email = EmailMessage(
-        subject=subject,
-        body=message,
-        from_email="connect@gulfteachers.com",  # same as login user
-        to=recipients,
-    )
+    """
+    Send a notification email with optional CV attachment.
+    Logs all events and errors for better traceability.
+    """
+    try:
+        logger.info(f"Preparing email to {recipients} | Subject: {subject}")
 
-    # If CV URL exists, download and attach it
-    if cv_url and cv_url != "N/A":
-        response = requests.get(cv_url)
-        if response.status_code == 200:
-            filename = cv_url.split("/")[-1]  # extract file name from URL
-            email.attach(filename, response.content, "application/pdf")
+        email = EmailMessage(
+            subject=subject,
+            body=message,
+            from_email="connect@gulfteachers.com",  # same as login user
+            to=recipients,
+        )
 
-    email.send()
+        # ✅ Try to download and attach CV file if provided
+        if cv_url and cv_url != "N/A":
+            try:
+                logger.info(f"Attempting to attach CV from URL: {cv_url}")
+                response = requests.get(cv_url, timeout=10)
+                response.raise_for_status()  # raise error for bad responses
+
+                filename = cv_url.split("/")[-1]
+                email.attach(filename, response.content, "application/pdf")
+                logger.info(f"CV '{filename}' attached successfully.")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Failed to download CV from {cv_url}: {str(e)}")
+
+        # ✅ Send the email
+        email.send(fail_silently=False)
+        logger.info(f"Email successfully sent to: {', '.join(recipients)}")
+
+    except Exception as e:
+        logger.error(f"Error sending email to {recipients}: {str(e)}", exc_info=True)
