@@ -28,6 +28,9 @@ class JobPostingListCreateView(APIView):
             salary = request.query_params.get('salary', None)
             job_status = request.query_params.get('status', None)
             school_id = request.query_params.get('school_id', None)
+            # New search parameters
+            position = request.query_params.get('position', None)
+            subject = request.query_params.get('subject', None)
 
             # Build the query
             filters = Q()
@@ -43,6 +46,11 @@ class JobPostingListCreateView(APIView):
                 filters &= Q(status__icontains=job_status)
             if school_id:
                 filters &= Q(school_id=school_id)
+            # Add position and subject filters (search in title and description)
+            if position:
+                filters &= (Q(title__icontains=position) | Q(description__icontains=position))
+            if subject:
+                filters &= (Q(title__icontains=subject) | Q(description__icontains=subject) | Q(required_qualifications__icontains=subject))
             
             # Filter job postings based on query parameters
             job_postings = JobPosting.objects.filter(filters).order_by('-created_at')

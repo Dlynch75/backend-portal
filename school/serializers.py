@@ -16,7 +16,9 @@ class JobPostingSerializer(serializers.ModelSerializer):
 
     def get_is_saved(self, obj):
         user = self.context.get('user')
-        return JobSave.objects.filter(job=obj, teacher=user).exists()
+        if not user or not hasattr(user, 'teacher'):
+            return False
+        return JobSave.objects.filter(job=obj, teacher=user.teacher).exists()
 
     def get_is_applied(self, obj):
         user = self.context.get('user')

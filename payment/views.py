@@ -27,6 +27,9 @@ class CreatePaymentSessionView(APIView):
         package_id = pk
         package = Package.objects.get(id=package_id)
         price_id = get_price_id(package.package_type)
+        
+        # Get promo code from query parameters
+        promo_code = request.query_params.get('promo_code', None)
 
         if not user or not user.stripe_subscription_id:
             try:
@@ -39,19 +42,39 @@ class CreatePaymentSessionView(APIView):
                 return JsonResponse({'error': f"Customer creation failed: {str(e)}"})
 
         try:
-            checkout_session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                mode='subscription',
-                line_items=[
+            # Build checkout session parameters
+            checkout_params = {
+                'payment_method_types': ['card'],
+                'mode': 'subscription',
+                'line_items': [
                     {
                         'price': price_id,
                         'quantity': 1,
                     },
                 ],
-                success_url=domain_url + f'/dashboard/success',
-                cancel_url=domain_url + 'failure/',
-                customer=user.stripe_subscription_id,
-            )
+                'success_url': domain_url + f'/dashboard/success',
+                'cancel_url': domain_url + 'failure/',
+                'customer': user.stripe_subscription_id,
+            }
+            
+            # Add promo code if provided
+            if promo_code:
+                try:
+                    # Retrieve the promotion code by code string
+                    promo_codes = stripe.PromotionCode.list(active=True, code=promo_code, limit=1)
+                    if promo_codes.data:
+                        checkout_params['discounts'] = [{'promotion_code': promo_codes.data[0].id}]
+                        
+                        # Check if discount is 100% - if so, skip payment method requirement
+                        coupon = stripe.Coupon.retrieve(promo_codes.data[0].coupon.id)
+                        if coupon.percent_off == 100:
+                            checkout_params['payment_method_collection'] = 'if_required'
+                    else:
+                        return create_response(create_message({'error': 'Invalid promo code'}, 1002), status.HTTP_400_BAD_REQUEST)
+                except stripe.error.StripeError as e:
+                    return create_response(create_message({'error': f'Promo code error: {str(e)}'}, 1002), status.HTTP_400_BAD_REQUEST)
+            
+            checkout_session = stripe.checkout.Session.create(**checkout_params)
             redirect_url = checkout_session.url  # Get the URL directly from the session object
             
             return create_response(create_message({'redirectUrl': redirect_url}, 1000), status.HTTP_200_OK)

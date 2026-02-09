@@ -18,6 +18,7 @@ class JobPosting(models.Model):
     location = models.CharField(max_length=100)
     deadline = models.DateTimeField()
     salary = models.CharField(max_length=50)
+    currency = models.CharField(max_length=10, default='USD', blank=True, null=True)  # AED, SAR, USD, etc.
     applied_people = models.IntegerField(default= 0)
     viewd = models.IntegerField(default= 0)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  
