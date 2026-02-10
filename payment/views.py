@@ -60,8 +60,34 @@ class CreatePaymentSessionView(APIView):
             # Add promo code if provided
             if promo_code:
                 try:
-                    # Retrieve the promotion code by code string
-                    promo_codes = stripe.PromotionCode.list(active=True, code=promo_code, limit=1)
+                    # Normalize promo code (trim whitespace)
+                    promo_code = promo_code.strip()
+                    promo_code_upper = promo_code.upper()
+                    
+                    # Map of allowed codes (uppercase -> correct case for Stripe)
+                    promo_code_map = {
+                        'GULFTEACHERS26': 'GulfTeachers26',
+                        'GT50': 'GT50',
+                        'GT30': 'GT30'
+                    }
+                    
+                    # Validate promo code against allowed codes
+                    if promo_code_upper not in promo_code_map:
+                        return create_response(create_message({'error': 'Invalid promo code'}, 1002), status.HTTP_400_BAD_REQUEST)
+                    
+                    # Get correct case for Stripe lookup
+                    stripe_promo_code = promo_code_map[promo_code_upper]
+                    
+                    # Check if package is for teachers (promo codes are only for teacher packages)
+                    if package.package_for != 'teacher':
+                        return create_response(create_message({'error': 'This promo code is only valid for teacher packages'}, 1002), status.HTTP_400_BAD_REQUEST)
+                    
+                    # GT30 is only valid for gold_teacher package
+                    if promo_code_upper == 'GT30' and package.package_type != 'gold_teacher':
+                        return create_response(create_message({'error': 'GT30 promo code is only valid for Gold Teacher package'}, 1002), status.HTTP_400_BAD_REQUEST)
+                    
+                    # Retrieve the promotion code by code string from Stripe (use correct case)
+                    promo_codes = stripe.PromotionCode.list(active=True, code=stripe_promo_code, limit=1)
                     if promo_codes.data:
                         checkout_params['discounts'] = [{'promotion_code': promo_codes.data[0].id}]
                         
@@ -70,7 +96,7 @@ class CreatePaymentSessionView(APIView):
                         if coupon.percent_off == 100:
                             checkout_params['payment_method_collection'] = 'if_required'
                     else:
-                        return create_response(create_message({'error': 'Invalid promo code'}, 1002), status.HTTP_400_BAD_REQUEST)
+                        return create_response(create_message({'error': 'Promo code not found in Stripe. Please contact support.'}, 1002), status.HTTP_400_BAD_REQUEST)
                 except stripe.error.StripeError as e:
                     return create_response(create_message({'error': f'Promo code error: {str(e)}'}, 1002), status.HTTP_400_BAD_REQUEST)
             
