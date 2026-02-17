@@ -101,9 +101,24 @@ The Gulf Teachers Team
                         error_details = traceback.format_exc()
                         print(f"Error saving teacher: {str(save_error)}")
                         print(f"Traceback: {error_details}")
-                        return Response({'error': f'Failed to create user: {str(save_error)}', 'details': str(save_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                        error_msg = str(save_error)
+                        return create_response(create_message(error_msg, 1002), status.HTTP_500_INTERNAL_SERVER_ERROR)
                 else:
-                    return Response({'error': 'Validation failed', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                    error_list = []
+                    for field, errors in serializer.errors.items():
+                        if isinstance(errors, list):
+                            for error in errors:
+                                field_name = field.replace('_', ' ').title()
+                                error_list.append(f"{field_name}: {error}")
+                        else:
+                            field_name = field.replace('_', ' ').title()
+                            error_list.append(f"{field_name}: {errors}")
+                    error_message = "; ".join(error_list) if error_list else "Validation failed. Please check all required fields."
+                    return Response({
+                        'message': error_message,
+                        'data': error_message,
+                        'errors': serializer.errors
+                    }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
