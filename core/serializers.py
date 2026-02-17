@@ -30,25 +30,19 @@ class TeacherSerializer(serializers.ModelSerializer):
     def validate_experience_year(self, value):
         """Convert string experience year to integer, handling '15+' case"""
         if not value or value == '':
-            return None
-        # Handle '15+' case
+            return '0'
         if isinstance(value, str) and value.endswith('+'):
-            return 15
-        try:
-            # Try to convert to int
-            return int(value)
-        except (ValueError, TypeError):
-            # If conversion fails, return None or raise validation error
-            raise serializers.ValidationError("Invalid experience year format.")
+            return '15'
+        if isinstance(value, (int, float)):
+            return str(int(value))
+        return str(value)
     
     def validate_dob(self, value):
         """Handle dob in DD/MM/YYYY format"""
         if isinstance(value, str) and value:
             try:
-                # Try to parse DD/MM/YYYY format
                 return datetime.strptime(value, '%d/%m/%Y').date()
             except ValueError:
-                # If that fails, try standard format
                 try:
                     return datetime.strptime(value, '%Y-%m-%d').date()
                 except ValueError:
@@ -56,17 +50,34 @@ class TeacherSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        if 'experience_year' not in validated_data or validated_data.get('experience_year') is None or validated_data.get('experience_year') == '':
+        exp_year = validated_data.get('experience_year', '0')
+        if not exp_year or exp_year == '':
             validated_data['experience_year'] = 0
-        elif isinstance(validated_data['experience_year'], str):
-            exp = validated_data['experience_year']
-            if exp.endswith('+'):
+        elif isinstance(exp_year, str):
+            if exp_year.endswith('+'):
                 validated_data['experience_year'] = 15
             else:
                 try:
-                    validated_data['experience_year'] = int(exp)
-                except ValueError:
+                    validated_data['experience_year'] = int(exp_year)
+                except (ValueError, TypeError):
                     validated_data['experience_year'] = 0
+        else:
+            try:
+                validated_data['experience_year'] = int(exp_year)
+            except (ValueError, TypeError):
+                validated_data['experience_year'] = 0
+        
+        if 'city' not in validated_data or not validated_data.get('city'):
+            validated_data['city'] = 'Not specified'
+        
+        if 'address' not in validated_data or not validated_data.get('address'):
+            validated_data['address'] = 'Not specified'
+        
+        if 'full_name' not in validated_data or not validated_data.get('full_name'):
+            validated_data['full_name'] = validated_data.get('username', 'User')
+        
+        validated_data['is_teacher'] = True
+        validated_data['is_school'] = False
         
         return Teacher.objects.create_user(**validated_data)
 

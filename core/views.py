@@ -72,11 +72,11 @@ The Gulf Teachers Team
             else:
                 serializer = TeacherSerializer(data=request.data)
                 if serializer.is_valid():
-                    user = serializer.save()
-                    # Send welcome email
                     try:
-                        welcome_subject = "Welcome to Gulf Teachers!"
-                        welcome_message = f"""
+                        user = serializer.save()
+                        try:
+                            welcome_subject = "Welcome to Gulf Teachers!"
+                            welcome_message = f"""
 Hello {user.teacher.full_name if hasattr(user, 'teacher') else user.username},
 
 Welcome to Gulf Teachers! We're excited to have you join our platform.
@@ -91,15 +91,25 @@ If you have any questions, feel free to reach out to us at connect@gulfteachers.
 Best regards,
 The Gulf Teachers Team
 """
-                        send_notification_email(welcome_subject, welcome_message, [user.email])
-                    except Exception as e:
-                        print(f"Failed to send welcome email: {str(e)}")
-                    
-                    return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+                            send_notification_email(welcome_subject, welcome_message, [user.email])
+                        except Exception as e:
+                            print(f"Failed to send welcome email: {str(e)}")
+                        
+                        return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
+                    except Exception as save_error:
+                        import traceback
+                        error_details = traceback.format_exc()
+                        print(f"Error saving teacher: {str(save_error)}")
+                        print(f"Traceback: {error_details}")
+                        return Response({'error': f'Failed to create user: {str(save_error)}', 'details': str(save_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 else:
-                    raise Exception(serializer.errors)
+                    return Response({'error': 'Validation failed', 'details': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Signup error: {str(e)}")
+            print(f"Traceback: {error_details}")
+            return Response({'error': str(e), 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LoginView(APIView):
