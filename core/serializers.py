@@ -14,6 +14,7 @@ class TeacherSerializer(serializers.ModelSerializer):
     packages = serializers.SerializerMethodField()
     password = serializers.CharField(write_only=True) 
     experience_year = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    dob = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     
     class Meta:
         model = Teacher
@@ -39,14 +40,20 @@ class TeacherSerializer(serializers.ModelSerializer):
     
     def validate_dob(self, value):
         """Handle dob in DD/MM/YYYY format"""
-        if isinstance(value, str) and value:
+        if value is None or value == '':
+            return None
+        if isinstance(value, str) and value.strip():
+            value = value.strip()
             try:
                 return datetime.strptime(value, '%d/%m/%Y').date()
             except ValueError:
                 try:
                     return datetime.strptime(value, '%Y-%m-%d').date()
                 except ValueError:
-                    raise serializers.ValidationError("Date must be in DD/MM/YYYY or YYYY-MM-DD format.")
+                    try:
+                        return datetime.strptime(value, '%d-%m-%Y').date()
+                    except ValueError:
+                        raise serializers.ValidationError("Date must be in DD/MM/YYYY format (e.g., 07/02/2001).")
         return value
 
     def create(self, validated_data):
