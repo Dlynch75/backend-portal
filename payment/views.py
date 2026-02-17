@@ -40,6 +40,21 @@ class CreatePaymentSessionView(APIView):
                 user.save()
             except Exception as e:
                 return JsonResponse({'error': f"Customer creation failed: {str(e)}"})
+        else:
+            try:
+                stripe.Customer.retrieve(user.stripe_subscription_id)
+            except stripe.error.InvalidRequestError as e:
+                if 'No such customer' in str(e) or 'similar object exists in test mode' in str(e):
+                    try:
+                        customer = stripe.Customer.create(
+                            email=user.email,
+                        )
+                        user.stripe_subscription_id = customer['id']
+                        user.save()
+                    except Exception as create_error:
+                        return JsonResponse({'error': f"Customer creation failed: {str(create_error)}"})
+                else:
+                    return JsonResponse({'error': f"Stripe error: {str(e)}"})
 
         try:
             # Build checkout session parameters

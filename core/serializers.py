@@ -56,8 +56,9 @@ class TeacherSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        # Convert experience_year if it's a string
-        if 'experience_year' in validated_data and isinstance(validated_data['experience_year'], str):
+        if 'experience_year' not in validated_data or validated_data.get('experience_year') is None or validated_data.get('experience_year') == '':
+            validated_data['experience_year'] = 0
+        elif isinstance(validated_data['experience_year'], str):
             exp = validated_data['experience_year']
             if exp.endswith('+'):
                 validated_data['experience_year'] = 15

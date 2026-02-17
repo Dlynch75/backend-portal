@@ -52,3 +52,4 @@ htmlcov/
 # Ignore local pipenv and poetry files
 Pipfile.lock
 poetry.lock
+.vercel
