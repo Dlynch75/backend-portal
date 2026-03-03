@@ -44,27 +44,32 @@ class UserSignupView(APIView):
                         serializer.validated_data['school_logo'] = image_url
                     
                     user = serializer.save()
-                    # Send welcome email
+                    # Send verification email
                     try:
-                        welcome_subject = "Welcome to Gulf Teachers!"
-                        welcome_message = f"""
+                        token = default_token_generator.make_token(user)
+                        uid = urlsafe_base64_encode(force_bytes(user.pk))
+                        frontend_url = "https://www.gulfteachers.com"
+                        verification_link = f"{frontend_url}/verify-email?uid={uid}&token={token}"
+                        
+                        verification_subject = "Verify Your Email - Gulf Teachers"
+                        verification_message = f"""
 Hello {user.school.school_name if hasattr(user, 'school') else user.username},
 
-Welcome to Gulf Teachers! We're excited to have you join our platform.
+Welcome to Gulf Teachers! Please verify your email address to activate your account.
 
-Your account has been successfully created. You can now:
-- Browse and post job opportunities
-- Connect with talented teachers
-- Access exclusive resources
+Click the link below to verify your email:
+{verification_link}
 
-If you have any questions, feel free to reach out to us at connect@gulfteachers.com.
+This link will expire in 24 hours.
+
+If you didn't create an account, please ignore this email.
 
 Best regards,
 The Gulf Teachers Team
 """
-                        send_notification_email(welcome_subject, welcome_message, [user.email])
+                        send_notification_email(verification_subject, verification_message, [user.email])
                     except Exception as e:
-                        print(f"Failed to send welcome email: {str(e)}")
+                        print(f"Failed to send verification email: {str(e)}")
                     
                     return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
                 else:
@@ -75,25 +80,30 @@ The Gulf Teachers Team
                     try:
                         user = serializer.save()
                         try:
-                            welcome_subject = "Welcome to Gulf Teachers!"
-                            welcome_message = f"""
+                            token = default_token_generator.make_token(user)
+                            uid = urlsafe_base64_encode(force_bytes(user.pk))
+                            frontend_url = "https://www.gulfteachers.com"
+                            verification_link = f"{frontend_url}/verify-email?uid={uid}&token={token}"
+                            
+                            verification_subject = "Verify Your Email - Gulf Teachers"
+                            verification_message = f"""
 Hello {user.teacher.full_name if hasattr(user, 'teacher') else user.username},
 
-Welcome to Gulf Teachers! We're excited to have you join our platform.
+Welcome to Gulf Teachers! Please verify your email address to activate your account.
 
-Your account has been successfully created. You can now:
-- Browse and apply to teaching positions
-- Create your professional profile
-- Connect with schools across the Gulf region
+Click the link below to verify your email:
+{verification_link}
 
-If you have any questions, feel free to reach out to us at connect@gulfteachers.com.
+This link will expire in 24 hours.
+
+If you didn't create an account, please ignore this email.
 
 Best regards,
 The Gulf Teachers Team
 """
-                            send_notification_email(welcome_subject, welcome_message, [user.email])
+                            send_notification_email(verification_subject, verification_message, [user.email])
                         except Exception as e:
-                            print(f"Failed to send welcome email: {str(e)}")
+                            print(f"Failed to send verification email: {str(e)}")
                         
                         return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
                     except Exception as save_error:
@@ -138,6 +148,9 @@ class LoginView(APIView):
             if user is None or not user.check_password(password):
                 raise Exception("Email or Password Invalid")
             
+            # Check if email is verified (warn but don't block)
+            email_verified = user.email_verified
+            
             # Generate tokens
             refresh = RefreshToken.for_user(user)
             role = 'teacher' if user.is_teacher else 'school'
@@ -155,6 +168,7 @@ class LoginView(APIView):
                 "user": user_data.data,
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
+                "email_verified": email_verified,
             }, 1000), status.HTTP_200_OK)
 
 
@@ -273,7 +287,7 @@ class PasswordResetRequestView(APIView):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             
             # Create reset link
-            frontend_url = "https://teacher-portal-omega.vercel.app"  # Update with your frontend URL
+            frontend_url = "https://www.gulfteachers.com"  # Update with your frontend URL
             reset_link = f"{frontend_url}/reset-password?uid={uid}&token={token}"
             
             # Send email
@@ -331,5 +345,73 @@ class PasswordResetConfirmView(APIView):
             
             return create_response(create_message("Password has been reset successfully.", 1000), status.HTTP_200_OK)
             
+        except Exception as e:
+            return response_500(str(e))
+
+
+class EmailVerificationView(APIView):
+    """Verify user email with token"""
+    def post(self, request):
+        try:
+            uid = request.data.get('uid')
+            token = request.data.get('token')
+            
+            if not all([uid, token]):
+                raise Exception("UID and token are required.")
+            
+            # Decode user ID
+            try:
+                user_id = force_str(urlsafe_base64_decode(uid))
+                user = CustomUser.objects.get(pk=user_id)
+            except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+                raise Exception("Invalid verification link.")
+            
+            # Verify token
+            if not default_token_generator.check_token(user, token):
+                raise Exception("Invalid or expired verification token.")
+            
+            # Mark email as verified
+            user.email_verified = True
+            user.save()
+            
+            return create_response(create_message("Email verified successfully. You can now log in.", 1000), status.HTTP_200_OK)
+            
+        except Exception as e:
+            return response_500(str(e))
+
+
+class ContactView(APIView):
+    """Handle contact form submissions"""
+    def post(self, request):
+        try:
+            name = request.data.get('name')
+            email = request.data.get('email')
+            subject = request.data.get('subject')
+            message = request.data.get('message')
+            
+            if not all([name, email, subject, message]):
+                raise Exception("All fields are required: name, email, subject, message.")
+            
+            # Send email to connect@gulfteachers.com
+            email_subject = f"Contact Form: {subject}"
+            email_message = f"""
+You have received a new contact form submission from Gulf Teachers website.
+
+Name: {name}
+Email: {email}
+Subject: {subject}
+
+Message:
+{message}
+
+---
+This email was sent from the contact form on www.gulfteachers.com
+"""
+            try:
+                send_notification_email(email_subject, email_message, ['connect@gulfteachers.com'])
+                return create_response(create_message("Thank you for contacting us! We'll get back to you soon.", 1000), status.HTTP_200_OK)
+            except Exception as e:
+                raise Exception(f"Failed to send email: {str(e)}")
+                
         except Exception as e:
             return response_500(str(e))
