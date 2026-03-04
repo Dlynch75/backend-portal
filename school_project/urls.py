@@ -24,6 +24,7 @@ from django.conf.urls.static import static
 
 from school_project import settings
 from django.urls import path, include
+from core.views import SitemapView
 
 extra_patterns_v1 = [
     path('core/', include('core.urls')),
@@ -38,7 +39,9 @@ urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('admin/', admin.site.urls),
-        # Version 1 URLs
+    # Sitemap - accessible at root level for SEO (https://www.gulfteachers.com/sitemap.xml)
+    path('sitemap.xml', SitemapView.as_view(), name='sitemap'),
+    # Version 1 URLs
     path("api/v1/", include(extra_patterns_v1)),
 ]
 if settings.DEBUG:

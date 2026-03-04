@@ -15,6 +15,9 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
+from django.http import HttpResponse
+from school.models import JobPosting
+from datetime import datetime
 
 
 class UserSignupView(APIView):
@@ -413,5 +416,90 @@ This email was sent from the contact form on www.gulfteachers.com
             except Exception as e:
                 raise Exception(f"Failed to send email: {str(e)}")
                 
+        except Exception as e:
+            return response_500(str(e))
+
+
+class SitemapView(APIView):
+    """Generate dynamic XML sitemap with all active job postings"""
+    def get(self, request):
+        try:
+            # Get all active job postings
+            active_jobs = JobPosting.objects.filter(status='open').order_by('-created_at')
+            
+            # Get current date for lastmod
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            
+            # Start building XML
+            xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
+            xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
+            xml_content += '        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n'
+            xml_content += '        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9\n'
+            xml_content += '        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">\n\n'
+            
+            # Homepage
+            xml_content += '  <!-- Homepage -->\n'
+            xml_content += '  <url>\n'
+            xml_content += '    <loc>https://www.gulfteachers.com/</loc>\n'
+            xml_content += f'    <lastmod>{current_date}</lastmod>\n'
+            xml_content += '    <changefreq>daily</changefreq>\n'
+            xml_content += '    <priority>1.0</priority>\n'
+            xml_content += '  </url>\n\n'
+            
+            # Jobs Page
+            xml_content += '  <!-- Jobs Page -->\n'
+            xml_content += '  <url>\n'
+            xml_content += '    <loc>https://www.gulfteachers.com/jobs</loc>\n'
+            xml_content += f'    <lastmod>{current_date}</lastmod>\n'
+            xml_content += '    <changefreq>daily</changefreq>\n'
+            xml_content += '    <priority>0.9</priority>\n'
+            xml_content += '  </url>\n\n'
+            
+            # Contact Page
+            xml_content += '  <!-- Contact Page -->\n'
+            xml_content += '  <url>\n'
+            xml_content += '    <loc>https://www.gulfteachers.com/contact</loc>\n'
+            xml_content += f'    <lastmod>{current_date}</lastmod>\n'
+            xml_content += '    <changefreq>monthly</changefreq>\n'
+            xml_content += '    <priority>0.7</priority>\n'
+            xml_content += '  </url>\n\n'
+            
+            # Privacy Policy
+            xml_content += '  <!-- Privacy Policy -->\n'
+            xml_content += '  <url>\n'
+            xml_content += '    <loc>https://www.gulfteachers.com/privacy-policy</loc>\n'
+            xml_content += f'    <lastmod>{current_date}</lastmod>\n'
+            xml_content += '    <changefreq>yearly</changefreq>\n'
+            xml_content += '    <priority>0.5</priority>\n'
+            xml_content += '  </url>\n\n'
+            
+            # Terms of Use
+            xml_content += '  <!-- Terms of Use -->\n'
+            xml_content += '  <url>\n'
+            xml_content += '    <loc>https://www.gulfteachers.com/terms-of-use</loc>\n'
+            xml_content += f'    <lastmod>{current_date}</lastmod>\n'
+            xml_content += '    <changefreq>yearly</changefreq>\n'
+            xml_content += '    <priority>0.5</priority>\n'
+            xml_content += '  </url>\n\n'
+            
+            # Add all active job postings
+            xml_content += '  <!-- Job Postings -->\n'
+            for job in active_jobs:
+                job_lastmod = job.created_at.strftime('%Y-%m-%d') if job.created_at else current_date
+                xml_content += '  <url>\n'
+                xml_content += f'    <loc>https://www.gulfteachers.com/jobs-description/{job.id}</loc>\n'
+                xml_content += f'    <lastmod>{job_lastmod}</lastmod>\n'
+                xml_content += '    <changefreq>weekly</changefreq>\n'
+                xml_content += '    <priority>0.8</priority>\n'
+                xml_content += '  </url>\n'
+            
+            # Close XML
+            xml_content += '\n</urlset>'
+            
+            # Return XML response
+            response = HttpResponse(xml_content, content_type='application/xml')
+            response['Content-Type'] = 'application/xml; charset=utf-8'
+            return response
+            
         except Exception as e:
             return response_500(str(e))
