@@ -20,12 +20,22 @@ from school.models import JobPosting
 from datetime import datetime
 
 
+def parse_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip().lower() in ('true', '1', 'yes')
+    return bool(value)
+
+
 class UserSignupView(APIView):
     def post(self, request):
         try:
-            is_school = request.data.get('is_school')
+            is_school = parse_bool(request.data.get('is_school'))
 
-            if is_school is None:
+            if request.data.get('is_school') is None and request.data.get('is_teacher') is None:
                 raise Exception("The 'is_school' field is required.")
 
             # Check if email or username already exists
@@ -83,12 +93,15 @@ The Gulf Teachers Team
                     try:
                         cv = request.FILES.get('cv')
                         if cv:
-                            cloudinary_response = cloudinary.uploader.upload(
-                                cv,
-                                resource_type='raw',
-                                folder='teacher_cvs'
-                            )
-                            serializer.validated_data['cv_url'] = cloudinary_response.get('secure_url')
+                            try:
+                                cloudinary_response = cloudinary.uploader.upload(
+                                    cv,
+                                    resource_type='raw',
+                                    folder='teacher_cvs'
+                                )
+                                serializer.validated_data['cv_url'] = cloudinary_response.get('secure_url')
+                            except Exception as upload_error:
+                                raise Exception(f"CV upload failed: {str(upload_error)}")
                         user = serializer.save()
                         try:
                             token = default_token_generator.make_token(user)
@@ -145,7 +158,12 @@ The Gulf Teachers Team
             error_details = traceback.format_exc()
             print(f"Signup error: {str(e)}")
             print(f"Traceback: {error_details}")
-            return Response({'error': str(e), 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            error_msg = str(e)
+            return Response({
+                'message': error_msg,
+                'data': error_msg,
+                'error': error_msg,
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LoginView(APIView):
