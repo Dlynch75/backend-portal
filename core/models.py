@@ -55,6 +55,8 @@ class Teacher(CustomUser):
     highest_qualification = models.CharField(max_length=100,default=None, blank=True, null=True )
     phone = models.CharField(max_length=15,default=None, blank=True, null=True )
     dob = models.DateField(default=None, blank=True, null=True )
+    linkedin_url = models.URLField(max_length=500, blank=True, null=True)
+    cv_url = models.URLField(max_length=1000, blank=True, null=True)
     
     class Meta:
         verbose_name = 'Teacher'

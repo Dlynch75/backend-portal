@@ -81,6 +81,14 @@ The Gulf Teachers Team
                 serializer = TeacherSerializer(data=request.data)
                 if serializer.is_valid():
                     try:
+                        cv = request.FILES.get('cv')
+                        if cv:
+                            cloudinary_response = cloudinary.uploader.upload(
+                                cv,
+                                resource_type='raw',
+                                folder='teacher_cvs'
+                            )
+                            serializer.validated_data['cv_url'] = cloudinary_response.get('secure_url')
                         user = serializer.save()
                         try:
                             token = default_token_generator.make_token(user)
