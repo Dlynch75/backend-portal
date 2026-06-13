@@ -20,6 +20,9 @@ from django.conf import settings
 from django.http import HttpResponse
 from school.models import JobPosting
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def parse_bool(value):
@@ -391,6 +394,7 @@ class EmailResendVerificationView(APIView):
                 mark_verification_resent(email)
                 return create_response(create_message(generic_message, 1000), status.HTTP_200_OK)
             except Exception as e:
+                logger.exception("Resend verification failed for %s", email)
                 raise Exception(f"Failed to send email: {str(e)}")
 
         except Exception as e:

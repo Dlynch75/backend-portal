@@ -128,46 +128,43 @@ def assign_user_to_package(user, package_id):
 
 
 # utils/email.py
-import smtplib
-from email.mime.text import MIMEText
-from django.core.mail import EmailMessage
+import logging
 import requests
+from django.conf import settings
+from django.core.mail import EmailMessage
 
-import requests
-from django.core.mail import EmailMessage
+logger = logging.getLogger(__name__)
+
+
+def _get_from_email():
+    return (
+        getattr(settings, 'DEFAULT_FROM_EMAIL', None)
+        or getattr(settings, 'EMAIL_HOST_USER', None)
+        or 'connect@gulfteachers.com'
+    )
 
 
 def send_notification_email(subject, message, recipients, cv_url=None):
-    """
-    Send a notification email with optional CV attachment.
-    Logs all events and errors for better traceability.
-    """
+    from_email = _get_from_email()
+    email = EmailMessage(
+        subject=subject,
+        body=message,
+        from_email=from_email,
+        to=recipients,
+    )
+
+    if cv_url and cv_url != "N/A":
+        try:
+            response = requests.get(cv_url, timeout=10)
+            response.raise_for_status()
+            filename = cv_url.split("/")[-1]
+            email.attach(filename, response.content, "application/pdf")
+        except requests.exceptions.RequestException as e:
+            logger.warning("Failed to attach CV from %s: %s", cv_url, e)
+
     try:
-        print(f"Preparing email to {recipients} | Subject: {subject}")
-
-        email = EmailMessage(
-            subject=subject,
-            body=message,
-            from_email="connect@gulfteachers.com",  # same as login user
-            to=recipients,
-        )
-
-        # ✅ Try to download and attach CV file if provided
-        if cv_url and cv_url != "N/A":
-            try:
-                print(f"Attempting to attach CV from URL: {cv_url}")
-                response = requests.get(cv_url, timeout=10)
-                response.raise_for_status()  # raise error for bad responses
-
-                filename = cv_url.split("/")[-1]
-                email.attach(filename, response.content, "application/pdf")
-                print(f"CV '{filename}' attached successfully.")
-            except requests.exceptions.RequestException as e:
-                print(f"Failed to download CV from {cv_url}: {str(e)}")
-
-        # ✅ Send the email
         email.send(fail_silently=False)
-        print(f"Email successfully sent to: {', '.join(recipients)}")
-
+        logger.info("Email sent to %s | Subject: %s", recipients, subject)
     except Exception as e:
-        print(f"Error sending email to {recipients}: {str(e)}", exc_info=True)
+        logger.exception("Error sending email to %s", recipients)
+        raise
