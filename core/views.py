@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from utils.response import create_message, create_response
 from utils.utils import  assign_user_to_package, get_user_from_token, require_authentication, response_500, send_notification_email
 from .email_utils import send_user_verification_email, can_resend_verification, mark_verification_resent
-from utils.feature_flags import is_teacher_application_paywall_enabled
+from utils.feature_flags import is_teacher_application_paywall_enabled, is_email_verification_enabled
 from .models import CustomUser, Package, School, Teacher
 from .serializers import PackageSerializer, TeacherSerializer, SchoolSerializer
 import cloudinary.uploader
@@ -356,6 +356,7 @@ class AppConfigView(APIView):
             create_message(
                 {
                     "teacher_application_paywall_enabled": is_teacher_application_paywall_enabled(),
+                    "email_verification_enabled": is_email_verification_enabled(),
                     "cv_upgrade_enabled": bool(getattr(settings, 'CV_UPGRADE_STRIPE_PRICE_ID', '')),
                     "cv_upgrade_amount": getattr(settings, 'CV_UPGRADE_AMOUNT', 19.99),
                 },
@@ -369,6 +370,12 @@ class EmailResendVerificationView(APIView):
     """Resend email verification link"""
     def post(self, request):
         try:
+            if not is_email_verification_enabled():
+                return create_response(
+                    create_message("Email verification is temporarily disabled. You can log in without verifying.", 1000),
+                    status.HTTP_200_OK,
+                )
+
             email = request.data.get('email', '').strip().lower()
             if not email:
                 raise Exception("Email is required.")
