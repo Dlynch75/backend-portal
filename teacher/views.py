@@ -5,6 +5,7 @@ from school.models import JobPosting
 from teacher.helper import can_create_post
 from teacher.models import Hire, JobAlert
 from school.serializers import JobPostingSerializer
+from utils.cloudinary_upload import upload_teacher_cv
 from utils.response import create_message, create_response
 from utils.utils import get_user_from_token, require_authentication, response_500, send_notification_email
 from utils.feature_flags import is_teacher_application_paywall_enabled
@@ -15,6 +16,10 @@ from django.db.models import Q
 from rest_framework.pagination import LimitOffsetPagination
 import cloudinary.uploader
 from django.db import transaction
+import logging
+import requests
+
+logger = logging.getLogger(__name__)
 
 
 class HireListCreateView(APIView):    
@@ -88,10 +93,7 @@ class HireListCreateView(APIView):
             use_profile_cv = str(request.data.get('use_profile_cv', '')).lower() in ('true', '1', 'yes')
 
             if 'cv' in request.FILES:
-                cv_file = request.FILES['cv']
-                cloudinary_response = cloudinary.uploader.upload(
-                    cv_file, resource_type='raw', flags="attachment"
-                )
+                cloudinary_response = upload_teacher_cv(request.FILES['cv'])
                 data['cv'] = cloudinary_response['secure_url']
             elif use_profile_cv and teacher.teacher.cv_url:
                 data['cv'] = teacher.teacher.cv_url
@@ -101,38 +103,37 @@ class HireListCreateView(APIView):
             serializer = HireSerializer(data=data)
             serializer.is_valid(raise_exception=True)
 
-            # ✅ Atomic block starts here
             with transaction.atomic():
                 serializer.save()
-
-                # Increment applied count
                 teacher.teacher.applied_count += 1
                 teacher.teacher.save()
 
-                # Prepare and send email (you can move this outside atomic if async)
-                subject = f"New Teacher Application - {teacher.username}"
-                cv_url = data.get('cv', 'N/A')
-                cover_letter = data.get('cover_letter', 'N/A')
-
-                message = (
-                    f"A new teacher has applied for the job: {job.title}\n\n"
-                    f"Teacher Name: {teacher.username}\n"
-                    f"Email: {teacher.email}\n"
-                    f"Phone: {teacher.teacher.phone or 'N/A'}\n"
-                    f"Experience: {teacher.teacher.experience_year} years\n"
-                    f"School: {job.school.school_name}\n\n"
-                    f"Cover Letter:\n{cover_letter}\n\n"
-                    f"CV Download Link: {cv_url}\n"
+            subject_line = f"New Teacher Application - {teacher.username}"
+            cv_url = data.get('cv', 'N/A')
+            cover_letter = data.get('cover_letter', 'N/A')
+            message = (
+                f"A new teacher has applied for the job: {job.title}\n\n"
+                f"Teacher Name: {teacher.username}\n"
+                f"Email: {teacher.email}\n"
+                f"Phone: {teacher.teacher.phone or 'N/A'}\n"
+                f"Experience: {teacher.teacher.experience_year} years\n"
+                f"School: {job.school.school_name}\n\n"
+                f"Cover Letter:\n{cover_letter}\n\n"
+                f"CV Download Link: {cv_url}\n"
+            )
+            try:
+                send_notification_email(
+                    subject_line,
+                    message,
+                    ['connect@gulfteachers.com', job.school.email],
+                    cv_url,
                 )
+            except Exception as mail_error:
+                logger.warning("Application saved but notification email failed: %s", mail_error)
 
-                recipients = ['connect@gulfteachers.com', job.school.email]
-                send_notification_email(subject, message, recipients, cv_url)
-
-            # ✅ Atomic block ends (if no exception, DB commit happens)
             return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
 
         except Exception as e:
-            # Any exception will rollback automatically
             return response_500(str(e))
 
 class RecommendedJobsView(APIView):
@@ -148,18 +149,25 @@ class RecommendedJobsView(APIView):
             profile_filters = Q()
 
             if teacher.teaching_subject:
-                subject = teacher.teaching_subject
-                profile_filters |= Q(subject__iexact=subject) | Q(title__icontains=subject) | Q(description__icontains=subject)
-            if teacher.address:
-                profile_filters |= Q(location__icontains=teacher.address)
-            if teacher.city:
-                profile_filters |= Q(location__icontains=teacher.city)
+                subject = teacher.teaching_subject.strip()
+                profile_filters |= (
+                    Q(subject__icontains=subject)
+                    | Q(title__icontains=subject)
+                    | Q(description__icontains=subject)
+                )
+            if teacher.address and teacher.address.strip().lower() not in ('not specified', ''):
+                profile_filters |= Q(location__icontains=teacher.address.strip())
+            if teacher.city and teacher.city.strip().lower() not in ('not specified', ''):
+                profile_filters |= Q(location__icontains=teacher.city.strip())
 
             queryset = JobPosting.objects.filter(filters)
             if profile_filters:
                 queryset = queryset.filter(profile_filters)
 
-            jobs = queryset.order_by('-created_at')[:12]
+            jobs = list(queryset.order_by('-created_at')[:12])
+            if not jobs:
+                jobs = list(JobPosting.objects.filter(status='open').order_by('-created_at')[:12])
+
             serializer = JobPostingSerializer(jobs, many=True, context={'user': user})
             return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
         except Exception as e:
@@ -210,6 +218,33 @@ class JobAlertDetailView(APIView):
             alert.is_active = False
             alert.save(update_fields=['is_active'])
             return create_response(create_message("Job alert removed.", 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+
+class HireCvView(APIView):
+    @require_authentication
+    def get(self, request, hire_id):
+        try:
+            from django.http import HttpResponse
+            user = get_user_from_token(request)
+            hire = get_object_or_404(Hire, id=hire_id)
+            if user.is_school:
+                if hire.school_id != user.id:
+                    raise Exception("You can only view applicants for your own jobs.")
+            elif user.is_teacher:
+                if hire.teacher_id != user.id:
+                    raise Exception("You can only view your own application CV.")
+            else:
+                raise Exception("Not allowed.")
+            if not hire.cv:
+                raise Exception("No CV attached to this application.")
+            response = requests.get(hire.cv, timeout=30)
+            response.raise_for_status()
+            content_type = response.headers.get('Content-Type', 'application/pdf')
+            http_response = HttpResponse(response.content, content_type=content_type)
+            http_response['Content-Disposition'] = 'inline; filename="cv.pdf"'
+            return http_response
         except Exception as e:
             return response_500(str(e))
 
@@ -269,8 +304,7 @@ class HireDetailView(APIView):
 
         # Handle CV upload if present
         if 'cv' in request.FILES:
-            cv_file = request.FILES['cv']
-            cloudinary_response = cloudinary.uploader.upload(cv_file, resource_type='raw')
+            cloudinary_response = upload_teacher_cv(request.FILES['cv'])
             cv_url = cloudinary_response['secure_url']
             data['cv'] = cv_url  # Update the CV URL
 

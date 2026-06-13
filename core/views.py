@@ -11,8 +11,8 @@ from .email_utils import send_user_verification_email, can_resend_verification, 
 from utils.feature_flags import is_teacher_application_paywall_enabled, is_email_verification_enabled
 from .models import CustomUser, Package, School, Teacher
 from .serializers import PackageSerializer, TeacherSerializer, SchoolSerializer
+from utils.cloudinary_upload import upload_teacher_cv
 import cloudinary.uploader
-from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
@@ -21,6 +21,7 @@ from django.http import HttpResponse
 from school.models import JobPosting
 from datetime import datetime
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -77,11 +78,7 @@ class UserSignupView(APIView):
                         cv = request.FILES.get('cv')
                         if cv:
                             try:
-                                cloudinary_response = cloudinary.uploader.upload(
-                                    cv,
-                                    resource_type='raw',
-                                    folder='teacher_cvs'
-                                )
+                                cloudinary_response = upload_teacher_cv(cv)
                                 serializer.validated_data['cv_url'] = cloudinary_response.get('secure_url')
                             except Exception as upload_error:
                                 raise Exception(f"CV upload failed: {str(upload_error)}")
@@ -175,34 +172,28 @@ class UserProfileView(APIView):
 
             # Use the appropriate serializer based on `is_school` or `is_teacher`
             if user.is_teacher:
-                teacher_data = request.data.copy()
+                teacher_data = {key: request.data.get(key) for key in request.data}
                 if 'cv' in request.FILES:
-                    cv_file = request.FILES['cv']
-                    cloudinary_response = cloudinary.uploader.upload(
-                        cv_file,
-                        resource_type='raw',
-                        folder='teacher_cvs',
-                    )
+                    cloudinary_response = upload_teacher_cv(request.FILES['cv'])
                     teacher_data['cv_url'] = cloudinary_response.get('secure_url')
+                for key in ('cv', 'password', 'is_school', 'is_teacher', 'packages', 'is_subscribed', 'has_used_trial'):
+                    teacher_data.pop(key, None)
                 serializer = TeacherSerializer(user.teacher, data=teacher_data, partial=True)
             elif user.is_school:
-                serializer = SchoolSerializer(user.school, data=request.data, partial=True)
-
-                # Handle logo upload if present
+                school_data = {key: request.data.get(key) for key in request.data}
                 if 'school_logo' in request.FILES:
-                    file = request.FILES['school_logo']
-                    cloudinary_response = cloudinary.uploader.upload(file)
-                    image_url = cloudinary_response['secure_url']
-                    request.data['school_logo'] = image_url 
-
+                    cloudinary_response = cloudinary.uploader.upload(request.FILES['school_logo'])
+                    school_data['school_logo'] = cloudinary_response['secure_url']
+                serializer = SchoolSerializer(user.school, data=school_data, partial=True)
             else:
                 serializer = None
-            
-            if serializer is not None and serializer.is_valid():
-                serializer.save()
-                return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
-            else:
-                raise Exception(serializer.errors if serializer else "Invalid user role.")
+
+            if serializer is None:
+                raise Exception("Invalid user role.")
+            if not serializer.is_valid():
+                raise Exception(serializer.errors)
+            serializer.save()
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
         except Exception as e:
             return response_500(str(e))
         
@@ -236,7 +227,26 @@ class UserProfileView(APIView):
             return create_response(create_message("User profile deleted successfully.", 1000), status.HTTP_200_OK)
         except Exception as e:
             return response_500(str(e))
-        
+
+
+class TeacherCvView(APIView):
+    @require_authentication
+    def get(self, request):
+        try:
+            user = get_user_from_token(request)
+            if not user.is_teacher:
+                raise Exception("Only teachers can access this CV.")
+            cv_url = user.teacher.cv_url
+            if not cv_url:
+                raise Exception("No CV on file.")
+            response = requests.get(cv_url, timeout=30)
+            response.raise_for_status()
+            content_type = response.headers.get('Content-Type', 'application/pdf')
+            http_response = HttpResponse(response.content, content_type=content_type)
+            http_response['Content-Disposition'] = 'inline; filename="cv.pdf"'
+            return http_response
+        except Exception as e:
+            return response_500(str(e))
         
         
 class PackageListView(APIView):

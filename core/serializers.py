@@ -23,7 +23,7 @@ class PackageSerializer(serializers.ModelSerializer):
 class TeacherSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
     packages = serializers.SerializerMethodField()
-    password = serializers.CharField(write_only=True) 
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     experience_year = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     dob = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     
@@ -50,10 +50,37 @@ class TeacherSerializer(serializers.ModelSerializer):
         return str(value)
     
     def validate_password(self, value):
+        if not value:
+            return value
         email = self.initial_data.get('email', '')
         username = self.initial_data.get('username', '')
         temp_user = Teacher(email=email, username=username)
         return validate_user_password(value, user=temp_user)
+
+    def update(self, instance, validated_data):
+        password = self.initial_data.get('password')
+        validated_data.pop('password', None)
+        if password:
+            validate_user_password(password, user=instance)
+
+        exp_year = validated_data.get('experience_year')
+        if exp_year is not None and exp_year != '':
+            if isinstance(exp_year, str):
+                if exp_year.endswith('+'):
+                    validated_data['experience_year'] = 15
+                else:
+                    try:
+                        validated_data['experience_year'] = int(exp_year)
+                    except (ValueError, TypeError):
+                        validated_data['experience_year'] = instance.experience_year
+        elif 'experience_year' in validated_data and (exp_year is None or exp_year == ''):
+            validated_data.pop('experience_year', None)
+
+        instance = super().update(instance, validated_data)
+        if password:
+            instance.set_password(password)
+            instance.save(update_fields=['password'])
+        return instance
 
     def validate_dob(self, value):
         """Handle dob in DD/MM/YYYY format"""
