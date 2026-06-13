@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import ApplyPackageView, PackageListView, UserProfileView, UserSignupView, LoginView, PasswordResetRequestView, PasswordResetConfirmView, ContactView, EmailVerificationView, SitemapView
+from .views import ApplyPackageView, PackageListView, UserProfileView, UserSignupView, LoginView, PasswordResetRequestView, PasswordResetConfirmView, ContactView, EmailVerificationView, EmailResendVerificationView, AppConfigView, SitemapView
 
 urlpatterns = [
+    path('config', AppConfigView.as_view(), name='app_config'),
     path('signup', UserSignupView.as_view(), name='user_signup'),
     path('login', LoginView.as_view(), name='login'),
     path('profile/update', UserProfileView.as_view(), name='profile_update'),
@@ -12,6 +13,7 @@ urlpatterns = [
     path('password/reset', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password/reset/confirm', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('email/verify', EmailVerificationView.as_view(), name='email_verify'),
+    path('email/resend', EmailResendVerificationView.as_view(), name='email_resend'),
     path('contact', ContactView.as_view(), name='contact'),
     path('sitemap.xml', SitemapView.as_view(), name='sitemap'),
 

@@ -19,6 +19,9 @@ class JobPosting(models.Model):
     deadline = models.DateTimeField()
     salary = models.CharField(max_length=50)
     currency = models.CharField(max_length=10, default='USD', blank=True, null=True)  # AED, SAR, USD, etc.
+    subject = models.CharField(max_length=100, blank=True, null=True)
+    is_featured = models.BooleanField(default=False)
+    featured_until = models.DateTimeField(blank=True, null=True)
     applied_people = models.IntegerField(default= 0)
     viewd = models.IntegerField(default= 0)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  

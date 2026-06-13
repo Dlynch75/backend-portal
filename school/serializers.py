@@ -4,15 +4,20 @@ from core.models import Teacher
 from core.serializers import SchoolSerializer, TeacherSerializer
 from teacher.models import Hire
 from .models import JobPosting, JobSave
+from .job_utils import is_job_featured
 
 class JobPostingSerializer(serializers.ModelSerializer):
     school = SchoolSerializer(read_only=True)
     is_saved = serializers.SerializerMethodField()
-    is_applied = serializers.SerializerMethodField()  # ✅ Add this line
+    is_applied = serializers.SerializerMethodField()
+    is_featured_active = serializers.SerializerMethodField()
 
     class Meta:
         model = JobPosting
-        fields = '__all__'  # or list all fields explicitly + 'is_applied'
+        fields = '__all__'
+
+    def get_is_featured_active(self, obj):
+        return is_job_featured(obj)
 
     def get_is_saved(self, obj):
         user = self.context.get('user')

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from core.serializers import SchoolSerializer, TeacherSerializer
 
 from school.serializers import JobPostingSerializer
-from .models import Hire, Teacher, School, JobPosting
+from .models import Hire, Teacher, School, JobPosting, JobAlert
 
 
 
@@ -17,4 +17,11 @@ class HireSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Hire
-        fields = ['id', 'status', 'teacher', 'school', 'job', 'teacher_id', 'school_id', 'job_id', 'cv', 'cover_letter']
+        fields = ['id', 'status', 'teacher', 'school', 'job', 'teacher_id', 'school_id', 'job_id', 'cv', 'cover_letter', 'school_note', 'created_at']
+
+
+class JobAlertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobAlert
+        fields = ['id', 'title', 'position', 'subject', 'location', 'is_active', 'created_at', 'last_notified_at']
+        read_only_fields = ['created_at', 'last_notified_at']

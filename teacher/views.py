@@ -3,10 +3,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from school.models import JobPosting
 from teacher.helper import can_create_post
-from teacher.models import Hire
+from teacher.models import Hire, JobAlert
+from school.serializers import JobPostingSerializer
 from utils.response import create_message, create_response
 from utils.utils import get_user_from_token, require_authentication, response_500, send_notification_email
-from .serializers import HireSerializer
+from utils.feature_flags import is_teacher_application_paywall_enabled
+from .serializers import HireSerializer, JobAlertSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -34,7 +36,7 @@ class HireListCreateView(APIView):
             if hire_status:
                 filters &= Q(status__icontains=hire_status)
             # Filter hire requests based on query parameters
-            hires = Hire.objects.filter(filters) if filters else Hire.objects.all()
+            hires = Hire.objects.filter(filters).order_by('-created_at') if filters else Hire.objects.all().order_by('-created_at')
             # Check for offset and limit in the request parameters
             offset = request.query_params.get('offset', None)
             limit = request.query_params.get('limit', None)
@@ -68,11 +70,11 @@ class HireListCreateView(APIView):
             job_id = request.query_params.get('job_id', None)
             job = get_object_or_404(JobPosting, id=job_id)
 
-            # Validations
-            if not teacher.is_subscribed:
-                raise Exception("Please add Subscription to Apply.")
-            if not can_create_post(teacher):
-                raise Exception("Post limit reached for your package this month.")
+            if is_teacher_application_paywall_enabled():
+                if not teacher.is_subscribed:
+                    raise Exception("Please add Subscription to Apply.")
+                if not can_create_post(teacher):
+                    raise Exception("Post limit reached for your package this month.")
             if Hire.objects.filter(teacher=teacher, job=job).exists():
                 raise Exception("You have already applied to this job.")
             if job.status != "open":
@@ -83,13 +85,18 @@ class HireListCreateView(APIView):
             data['school_id'] = job.school.id
             data['teacher_id'] = teacher.id
 
-            # Upload CV if provided
+            use_profile_cv = str(request.data.get('use_profile_cv', '')).lower() in ('true', '1', 'yes')
+
             if 'cv' in request.FILES:
                 cv_file = request.FILES['cv']
                 cloudinary_response = cloudinary.uploader.upload(
                     cv_file, resource_type='raw', flags="attachment"
                 )
                 data['cv'] = cloudinary_response['secure_url']
+            elif use_profile_cv and teacher.teacher.cv_url:
+                data['cv'] = teacher.teacher.cv_url
+            else:
+                raise Exception("Please upload a CV or save a default CV on your profile.")
 
             serializer = HireSerializer(data=data)
             serializer.is_valid(raise_exception=True)
@@ -128,13 +135,130 @@ class HireListCreateView(APIView):
             # Any exception will rollback automatically
             return response_500(str(e))
 
+class RecommendedJobsView(APIView):
+    @require_authentication
+    def get(self, request):
+        try:
+            user = get_user_from_token(request)
+            if not user.is_teacher:
+                raise Exception("Only teachers can view recommended jobs.")
+
+            teacher = user.teacher
+            filters = Q(status='open')
+            profile_filters = Q()
+
+            if teacher.teaching_subject:
+                subject = teacher.teaching_subject
+                profile_filters |= Q(subject__iexact=subject) | Q(title__icontains=subject) | Q(description__icontains=subject)
+            if teacher.address:
+                profile_filters |= Q(location__icontains=teacher.address)
+            if teacher.city:
+                profile_filters |= Q(location__icontains=teacher.city)
+
+            queryset = JobPosting.objects.filter(filters)
+            if profile_filters:
+                queryset = queryset.filter(profile_filters)
+
+            jobs = queryset.order_by('-created_at')[:12]
+            serializer = JobPostingSerializer(jobs, many=True, context={'user': user})
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+
+class JobAlertListCreateView(APIView):
+    @require_authentication
+    def get(self, request):
+        try:
+            user = get_user_from_token(request)
+            if not user.is_teacher:
+                raise Exception("Only teachers can manage job alerts.")
+            alerts = JobAlert.objects.filter(teacher=user.teacher, is_active=True).order_by('-created_at')
+            serializer = JobAlertSerializer(alerts, many=True)
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+    @require_authentication
+    def post(self, request):
+        try:
+            user = get_user_from_token(request)
+            if not user.is_teacher:
+                raise Exception("Only teachers can create job alerts.")
+
+            data = request.data.copy()
+            has_criteria = any(data.get(field, '').strip() for field in ['title', 'position', 'subject', 'location'])
+            if not has_criteria:
+                raise Exception("Add at least one search filter for your job alert.")
+
+            serializer = JobAlertSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(teacher=user.teacher)
+            return create_response(create_message(serializer.data, 1000), status.HTTP_201_CREATED)
+        except Exception as e:
+            return response_500(str(e))
+
+
+class JobAlertDetailView(APIView):
+    @require_authentication
+    def delete(self, request, alert_id):
+        try:
+            user = get_user_from_token(request)
+            if not user.is_teacher:
+                raise Exception("Only teachers can delete job alerts.")
+            alert = get_object_or_404(JobAlert, pk=alert_id, teacher=user.teacher)
+            alert.is_active = False
+            alert.save(update_fields=['is_active'])
+            return create_response(create_message("Job alert removed.", 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+
+SCHOOL_UPDATABLE_STATUSES = {
+    'submitted', 'under_review', 'shortlisted', 'interview',
+    'not_selected', 'hired', 'rejected', 'selected',
+}
+
+
 class HireDetailView(APIView):
     @require_authentication
     def get(self, request, hire_id):
-        # Get details of a specific hire
-        hire = get_object_or_404(Hire, id=hire_id)
-        serializer = HireSerializer(hire)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            hire = get_object_or_404(Hire, id=hire_id)
+            serializer = HireSerializer(hire)
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+    @require_authentication
+    def patch(self, request, hire_id):
+        try:
+            user = get_user_from_token(request)
+            if not user.is_school:
+                raise Exception("Only schools can update application status.")
+
+            hire = get_object_or_404(Hire, id=hire_id)
+            if hire.school_id != user.id:
+                raise Exception("You can only update applicants for your own jobs.")
+
+            data = {}
+            if 'status' in request.data:
+                status_value = request.data.get('status')
+                if status_value not in SCHOOL_UPDATABLE_STATUSES:
+                    raise Exception("Invalid application status.")
+                data['status'] = status_value
+            if 'school_note' in request.data:
+                data['school_note'] = request.data.get('school_note') or ''
+
+            if not data:
+                raise Exception("Provide status and/or school_note to update.")
+
+            serializer = HireSerializer(hire, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
 
     @require_authentication
     def put(self, request, hire_id):

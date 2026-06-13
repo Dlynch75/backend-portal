@@ -7,6 +7,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from utils.response import create_message, create_response
 from utils.utils import  assign_user_to_package, get_user_from_token, require_authentication, response_500, send_notification_email
+from .email_utils import send_user_verification_email, can_resend_verification, mark_verification_resent
+from utils.feature_flags import is_teacher_application_paywall_enabled
 from .models import CustomUser, Package, School, Teacher
 from .serializers import PackageSerializer, TeacherSerializer, SchoolSerializer
 import cloudinary.uploader
@@ -57,30 +59,8 @@ class UserSignupView(APIView):
                         serializer.validated_data['school_logo'] = image_url
                     
                     user = serializer.save()
-                    # Send verification email
                     try:
-                        token = default_token_generator.make_token(user)
-                        uid = urlsafe_base64_encode(force_bytes(user.pk))
-                        frontend_url = "https://www.gulfteachers.com"
-                        verification_link = f"{frontend_url}/verify-email?uid={uid}&token={token}"
-                        
-                        verification_subject = "Verify Your Email - Gulf Teachers"
-                        verification_message = f"""
-Hello {user.school.school_name if hasattr(user, 'school') else user.username},
-
-Welcome to Gulf Teachers! Please verify your email address to activate your account.
-
-Click the link below to verify your email:
-{verification_link}
-
-This link will expire in 24 hours.
-
-If you didn't create an account, please ignore this email.
-
-Best regards,
-The Gulf Teachers Team
-"""
-                        send_notification_email(verification_subject, verification_message, [user.email])
+                        send_user_verification_email(user)
                     except Exception as e:
                         print(f"Failed to send verification email: {str(e)}")
                     
@@ -104,28 +84,7 @@ The Gulf Teachers Team
                                 raise Exception(f"CV upload failed: {str(upload_error)}")
                         user = serializer.save()
                         try:
-                            token = default_token_generator.make_token(user)
-                            uid = urlsafe_base64_encode(force_bytes(user.pk))
-                            frontend_url = "https://www.gulfteachers.com"
-                            verification_link = f"{frontend_url}/verify-email?uid={uid}&token={token}"
-                            
-                            verification_subject = "Verify Your Email - Gulf Teachers"
-                            verification_message = f"""
-Hello {user.teacher.full_name if hasattr(user, 'teacher') else user.username},
-
-Welcome to Gulf Teachers! Please verify your email address to activate your account.
-
-Click the link below to verify your email:
-{verification_link}
-
-This link will expire in 24 hours.
-
-If you didn't create an account, please ignore this email.
-
-Best regards,
-The Gulf Teachers Team
-"""
-                            send_notification_email(verification_subject, verification_message, [user.email])
+                            send_user_verification_email(user)
                         except Exception as e:
                             print(f"Failed to send verification email: {str(e)}")
                         
@@ -213,7 +172,16 @@ class UserProfileView(APIView):
 
             # Use the appropriate serializer based on `is_school` or `is_teacher`
             if user.is_teacher:
-                serializer = TeacherSerializer(user.teacher, data=request.data, partial=True)
+                teacher_data = request.data.copy()
+                if 'cv' in request.FILES:
+                    cv_file = request.FILES['cv']
+                    cloudinary_response = cloudinary.uploader.upload(
+                        cv_file,
+                        resource_type='raw',
+                        folder='teacher_cvs',
+                    )
+                    teacher_data['cv_url'] = cloudinary_response.get('secure_url')
+                serializer = TeacherSerializer(user.teacher, data=teacher_data, partial=True)
             elif user.is_school:
                 serializer = SchoolSerializer(user.school, data=request.data, partial=True)
 
@@ -374,6 +342,57 @@ class PasswordResetConfirmView(APIView):
             
             return create_response(create_message("Password has been reset successfully.", 1000), status.HTTP_200_OK)
             
+        except Exception as e:
+            return response_500(str(e))
+
+
+class AppConfigView(APIView):
+    def get(self, request):
+        from django.conf import settings
+        return create_response(
+            create_message(
+                {
+                    "teacher_application_paywall_enabled": is_teacher_application_paywall_enabled(),
+                    "cv_upgrade_enabled": bool(getattr(settings, 'CV_UPGRADE_STRIPE_PRICE_ID', '')),
+                    "cv_upgrade_amount": getattr(settings, 'CV_UPGRADE_AMOUNT', 19.99),
+                },
+                1000,
+            ),
+            status.HTTP_200_OK,
+        )
+
+
+class EmailResendVerificationView(APIView):
+    """Resend email verification link"""
+    def post(self, request):
+        try:
+            email = request.data.get('email', '').strip().lower()
+            if not email:
+                raise Exception("Email is required.")
+
+            generic_message = "If an account exists with this email and is not yet verified, a verification link has been sent."
+
+            try:
+                user = CustomUser.objects.get(email__iexact=email)
+            except CustomUser.DoesNotExist:
+                return create_response(create_message(generic_message, 1000), status.HTTP_200_OK)
+
+            if user.email_verified:
+                return create_response(create_message("This email is already verified. You can log in.", 1000), status.HTTP_200_OK)
+
+            if not can_resend_verification(email):
+                return create_response(
+                    create_message("A verification email was sent recently. Please wait a minute before requesting another.", 1002),
+                    status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
+            try:
+                send_user_verification_email(user)
+                mark_verification_resent(email)
+                return create_response(create_message(generic_message, 1000), status.HTTP_200_OK)
+            except Exception as e:
+                raise Exception(f"Failed to send email: {str(e)}")
+
         except Exception as e:
             return response_500(str(e))
 

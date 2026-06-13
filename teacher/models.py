@@ -7,17 +7,40 @@ from school.models import JobPosting
 class Hire(models.Model):
     STATUS_CHOICES = [
         ('submitted', 'Submitted'),
+        ('under_review', 'Under review'),
+        ('shortlisted', 'Shortlisted'),
+        ('not_selected', 'Not selected'),
+        ('interview', 'Interview'),
+        ('hired', 'Hired'),
         ('selected', 'Selected'),
         ('rejected', 'Rejected'),
     ]
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='submitted')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='submitted')
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
     school = models.ForeignKey(School, on_delete=models.CASCADE)
     job = models.ForeignKey(JobPosting, on_delete=models.CASCADE)
     cover_letter = models.TextField(default=None, null=True, blank=True)
-    cv = models.URLField(max_length=500, null=True, blank=True) 
-    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  
+    cv = models.URLField(max_length=500, null=True, blank=True)
+    school_note = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
 
     def __str__(self):
         return f'Hire: {self.teacher} for Job: {self.job} - Status: {self.status}'
+
+
+class JobAlert(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='job_alerts')
+    title = models.CharField(max_length=100, blank=True, default='')
+    position = models.CharField(max_length=100, blank=True, default='')
+    subject = models.CharField(max_length=100, blank=True, default='')
+    location = models.CharField(max_length=100, blank=True, default='')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_notified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Job Alert'
+
+    def __str__(self):
+        return f'Alert for {self.teacher.email}'

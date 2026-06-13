@@ -11,29 +11,49 @@ from utils.response import create_message, create_response
 from utils.utils import auth_user, get_user_from_token, require_authentication, response_500
 from .models import JobPosting, JobSave
 from .serializers import JobPostingSerializer, JobSaveSerializer
+from .job_utils import apply_job_sorting
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 import pycountry
 
 
-# Create your views here.
+class JobSubjectsView(APIView):
+    def get(self, request):
+        try:
+            subjects = (
+                JobPosting.objects.filter(status='open')
+                .exclude(subject__isnull=True)
+                .exclude(subject='')
+                .values_list('subject', flat=True)
+                .distinct()
+                .order_by('subject')
+            )
+            return create_response(create_message(list(subjects), 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+
 class JobPostingListCreateView(APIView):
     def get(self, request):
         try:
-            # school = get_user_from_token(request)
-            # Get query parameters
             location = request.query_params.get('location', None)
             experience = request.query_params.get('experience', None)
             title = request.query_params.get('title', None)
             salary = request.query_params.get('salary', None)
             job_status = request.query_params.get('status', None)
             school_id = request.query_params.get('school_id', None)
-            # New search parameters
             position = request.query_params.get('position', None)
             subject = request.query_params.get('subject', None)
+            sort = request.query_params.get('sort', 'recent')
 
-            # Build the query
             filters = Q()
+            if school_id:
+                filters &= Q(school_id=school_id)
+            else:
+                filters &= Q(status='open')
+
+            if job_status:
+                filters &= Q(status__icontains=job_status)
             if location:
                 filters &= Q(location__icontains=location)
             if experience:
@@ -42,18 +62,17 @@ class JobPostingListCreateView(APIView):
                 filters &= Q(title__icontains=title)
             if salary:
                 filters &= Q(salary__icontains=salary)
-            if job_status:
-                filters &= Q(status__icontains=job_status)
-            if school_id:
-                filters &= Q(school_id=school_id)
-            # Add position and subject filters (search in title and description)
             if position:
                 filters &= (Q(title__icontains=position) | Q(description__icontains=position))
             if subject:
-                filters &= (Q(title__icontains=subject) | Q(description__icontains=subject) | Q(required_qualifications__icontains=subject))
-            
-            # Filter job postings based on query parameters
-            job_postings = JobPosting.objects.filter(filters).order_by('-created_at')
+                filters &= (
+                    Q(subject__iexact=subject)
+                    | Q(title__icontains=subject)
+                    | Q(description__icontains=subject)
+                    | Q(required_qualifications__icontains=subject)
+                )
+
+            job_postings = apply_job_sorting(JobPosting.objects.filter(filters), sort)
             # Check for offset and limit in the request parameters
             offset = request.query_params.get('offset', None)
             limit = request.query_params.get('limit', None)
@@ -99,12 +118,42 @@ class JobPostingListCreateView(APIView):
         except Exception as e:
             return response_500(str(e))
     
+class SimilarJobsView(APIView):
+    def get(self, request, pk):
+        try:
+            job = get_object_or_404(JobPosting, pk=pk)
+            filters = Q(status='open') & ~Q(pk=pk)
+            similarity = Q()
+            if job.subject:
+                similarity |= Q(subject__iexact=job.subject)
+            if job.location:
+                similarity |= Q(location__icontains=job.location)
+            if not job.subject and not job.location:
+                return create_response(create_message([], 1000), status.HTTP_200_OK)
+
+            user = None
+            auth_header = request.headers.get('Authorization')
+            if auth_header and auth_header.startswith('Bearer '):
+                try:
+                    user = get_user_from_token(request)
+                except Exception:
+                    user = None
+
+            jobs = JobPosting.objects.filter(filters & similarity).order_by('-created_at')[:6]
+            serializer = JobPostingSerializer(jobs, many=True, context={'user': user})
+            return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
+        except Exception as e:
+            return response_500(str(e))
+
+
 class JobPostingDetailView(APIView):
     @require_authentication
     def get(self, request, pk):
         try:
             user = get_user_from_token(request)
             job_posting = get_object_or_404(JobPosting, pk=pk)
+            JobPosting.objects.filter(pk=pk).update(viewd=job_posting.viewd + 1)
+            job_posting.refresh_from_db()
             serializer = JobPostingSerializer(job_posting, context={'user': user})
             return create_response(create_message(serializer.data, 1000), status.HTTP_200_OK)
         except Exception as e:

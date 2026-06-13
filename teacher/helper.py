@@ -1,10 +1,12 @@
 from datetime import date
 from core.models import UserPackage
-
-from datetime import date, timedelta
+from utils.feature_flags import is_teacher_application_paywall_enabled
 
 
 def can_create_post(teacher):
+    if not is_teacher_application_paywall_enabled():
+        return True
+
     today = date.today()
 
     try:

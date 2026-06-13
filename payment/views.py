@@ -7,7 +7,16 @@ from django.http import JsonResponse
 from core.models import CustomUser, Package, UserPackage
 from payment.helper import get_price_id, handle_invoice_created, handle_invoice_payment_failed, handle_invoice_payment_succeeded, handle_subscription_deleted
 from payment.models import Invoice
-from school_project.settings import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+from school_project.settings import (
+    STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET,
+    FEATURED_JOB_STRIPE_PRICE_ID,
+    FEATURED_JOB_DURATION_DAYS,
+    FRONTEND_URL,
+)
+from school.models import JobPosting
+from payment.featured_job import activate_job_feature
+from payment.cv_upgrade import complete_cv_upgrade_payment
 from utils.response import create_message, create_response
 from utils.utils import get_user_from_token, require_authentication, response_500
 import stripe
@@ -124,6 +133,57 @@ class CreatePaymentSessionView(APIView):
             return response_500(str(e))
 
 
+class CreateFeaturedJobPaymentView(APIView):
+    @require_authentication
+    def get(self, request, job_id):
+        try:
+            user = get_user_from_token(request)
+            if not user.is_school:
+                raise Exception("Only schools can feature job listings.")
+
+            if not FEATURED_JOB_STRIPE_PRICE_ID:
+                raise Exception("Featured job payments are not configured yet. Please contact support.")
+
+            job = JobPosting.objects.get(pk=job_id, school=user.school)
+            if job.status != 'open':
+                raise Exception("Only open jobs can be featured.")
+
+            if not user.stripe_subscription_id:
+                customer = stripe.Customer.create(email=user.email)
+                user.stripe_subscription_id = customer['id']
+                user.save()
+            else:
+                try:
+                    stripe.Customer.retrieve(user.stripe_subscription_id)
+                except stripe.error.InvalidRequestError:
+                    customer = stripe.Customer.create(email=user.email)
+                    user.stripe_subscription_id = customer['id']
+                    user.save()
+
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                mode='payment',
+                line_items=[{'price': FEATURED_JOB_STRIPE_PRICE_ID, 'quantity': 1}],
+                success_url=f"{FRONTEND_URL.rstrip('/')}/dashboard/success?featured_job={job_id}",
+                cancel_url=f"{FRONTEND_URL.rstrip('/')}/dashboard/jobs",
+                customer=user.stripe_subscription_id,
+                metadata={
+                    'type': 'featured_job',
+                    'job_id': str(job_id),
+                    'duration_days': str(FEATURED_JOB_DURATION_DAYS),
+                },
+            )
+
+            return create_response(
+                create_message({'redirectUrl': checkout_session.url}, 1000),
+                status.HTTP_200_OK,
+            )
+        except JobPosting.DoesNotExist:
+            return response_500("Job not found or you do not have permission.")
+        except Exception as e:
+            return response_500(str(e))
+
+
 @csrf_exempt
 def stripe_webhook(request):
     if request.method != 'POST':
@@ -152,6 +212,19 @@ def stripe_webhook(request):
         if not data_object:
             return HttpResponse(status=400, content="Missing event data")
 
+        if event['type'] == 'checkout.session.completed':
+            session = data_object
+            metadata = session.get('metadata') or {}
+            if metadata.get('type') == 'featured_job' and metadata.get('job_id'):
+                duration_days = int(metadata.get('duration_days', FEATURED_JOB_DURATION_DAYS))
+                activate_job_feature(metadata['job_id'], duration_days)
+                return JsonResponse({'status': 'success'})
+            if metadata.get('type') == 'cv_upgrade' and metadata.get('order_id'):
+                complete_cv_upgrade_payment(metadata['order_id'], session.get('id'))
+                return JsonResponse({'status': 'success'})
+            if session.get('mode') == 'payment':
+                return JsonResponse({'status': 'success'})
+
         customer_id = data_object.get('customer')
         if not customer_id:
             return HttpResponse(status=400, content="Missing customer ID")
@@ -160,9 +233,7 @@ def stripe_webhook(request):
             user = CustomUser.objects.get(stripe_subscription_id=customer_id)
         except ObjectDoesNotExist:
             return HttpResponse(status=404, content="User not found ")
-        
-        
-        # Process based on event type
+
         if event['type'] == 'invoice.created':
             handle_invoice_created(user, data_object)
 

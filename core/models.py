@@ -57,7 +57,8 @@ class Teacher(CustomUser):
     dob = models.DateField(default=None, blank=True, null=True )
     linkedin_url = models.URLField(max_length=500, blank=True, null=True)
     cv_url = models.URLField(max_length=1000, blank=True, null=True)
-    
+    default_cover_letter = models.TextField(blank=True, null=True)
+
     class Meta:
         verbose_name = 'Teacher'
 

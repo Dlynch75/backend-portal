@@ -1,7 +1,18 @@
 from rest_framework import serializers
 from .models import Teacher, School, UserPackage, Package
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from datetime import datetime
+
+
+def validate_user_password(value, user=None):
+    try:
+        validate_password(value, user=user)
+    except ValidationError as e:
+        messages = e.messages
+        raise serializers.ValidationError(messages[0] if messages else "Password does not meet requirements.")
+    return value
 
 class PackageSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,9 +29,9 @@ class TeacherSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Teacher
-        fields = ('id', 'email', 'username', 'city', 'address', 'full_name', 'experience_year', 
+        fields = ('id', 'email', 'username', 'city', 'address', 'full_name', 'experience_year',
                   'is_school', 'is_teacher', 'packages', 'is_subscribed', 'password', 'teaching_subject', 'highest_qualification',
-                  'phone', 'dob', 'linkedin_url', 'cv_url', 'has_used_trial')
+                  'phone', 'dob', 'linkedin_url', 'cv_url', 'default_cover_letter', 'has_used_trial')
 
     def get_packages(self, obj):
         user_packages = UserPackage.objects.filter(teacher=obj)
@@ -38,6 +49,12 @@ class TeacherSerializer(serializers.ModelSerializer):
             return str(int(value))
         return str(value)
     
+    def validate_password(self, value):
+        email = self.initial_data.get('email', '')
+        username = self.initial_data.get('username', '')
+        temp_user = Teacher(email=email, username=username)
+        return validate_user_password(value, user=temp_user)
+
     def validate_dob(self, value):
         """Handle dob in DD/MM/YYYY format"""
         if value is None or value == '':
@@ -103,6 +120,12 @@ class SchoolSerializer(serializers.ModelSerializer):
         if user_packages.exists():
             return PackageSerializer([user_package.package for user_package in user_packages], many=True).data
         return None
+
+    def validate_password(self, value):
+        email = self.initial_data.get('email', '')
+        username = self.initial_data.get('username', '')
+        temp_user = School(email=email, username=username)
+        return validate_user_password(value, user=temp_user)
 
     def create(self, validated_data):
         return School.objects.create_user(**validated_data)
