@@ -6,6 +6,7 @@ from teacher.helper import can_create_post
 from teacher.models import Hire, JobAlert
 from school.serializers import JobPostingSerializer
 from utils.cloudinary_upload import upload_teacher_cv
+from utils.cv_stream import fetch_cv_bytes, resolve_cv_view_url
 from utils.response import create_message, create_response
 from utils.utils import get_user_from_token, require_authentication, response_500, send_notification_email
 from utils.feature_flags import is_teacher_application_paywall_enabled
@@ -17,7 +18,6 @@ from rest_framework.pagination import LimitOffsetPagination
 import cloudinary.uploader
 from django.db import transaction
 import logging
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +227,7 @@ class HireCvView(APIView):
     def get(self, request, hire_id):
         try:
             from django.http import HttpResponse
-            user = get_user_from_token(request)
+            user = request.user
             hire = get_object_or_404(Hire, id=hire_id)
             if user.is_school:
                 if hire.school_id != user.id:
@@ -239,13 +239,19 @@ class HireCvView(APIView):
                 raise Exception("Not allowed.")
             if not hire.cv:
                 raise Exception("No CV attached to this application.")
-            response = requests.get(hire.cv, timeout=30)
-            response.raise_for_status()
-            content_type = response.headers.get('Content-Type', 'application/pdf')
-            http_response = HttpResponse(response.content, content_type=content_type)
+
+            if request.query_params.get('format') == 'url':
+                return create_response(
+                    create_message({'url': resolve_cv_view_url(hire.cv)}, 1000),
+                    status.HTTP_200_OK,
+                )
+
+            content, content_type = fetch_cv_bytes(hire.cv)
+            http_response = HttpResponse(content, content_type=content_type)
             http_response['Content-Disposition'] = 'inline; filename="cv.pdf"'
             return http_response
         except Exception as e:
+            logger.exception("Hire CV view failed for hire_id=%s", hire_id)
             return response_500(str(e))
 
 

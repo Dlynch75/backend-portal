@@ -12,6 +12,7 @@ from utils.feature_flags import is_teacher_application_paywall_enabled, is_email
 from .models import CustomUser, Package, School, Teacher
 from .serializers import PackageSerializer, TeacherSerializer, SchoolSerializer
 from utils.cloudinary_upload import upload_teacher_cv
+from utils.cv_stream import fetch_cv_bytes, resolve_cv_view_url
 import cloudinary.uploader
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -21,7 +22,6 @@ from django.http import HttpResponse
 from school.models import JobPosting
 from datetime import datetime
 import logging
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -233,19 +233,25 @@ class TeacherCvView(APIView):
     @require_authentication
     def get(self, request):
         try:
-            user = get_user_from_token(request)
+            user = request.user
             if not user.is_teacher:
                 raise Exception("Only teachers can access this CV.")
             cv_url = user.teacher.cv_url
             if not cv_url:
                 raise Exception("No CV on file.")
-            response = requests.get(cv_url, timeout=30)
-            response.raise_for_status()
-            content_type = response.headers.get('Content-Type', 'application/pdf')
-            http_response = HttpResponse(response.content, content_type=content_type)
+
+            if request.query_params.get('format') == 'url':
+                return create_response(
+                    create_message({'url': resolve_cv_view_url(cv_url)}, 1000),
+                    status.HTTP_200_OK,
+                )
+
+            content, content_type = fetch_cv_bytes(cv_url)
+            http_response = HttpResponse(content, content_type=content_type)
             http_response['Content-Disposition'] = 'inline; filename="cv.pdf"'
             return http_response
         except Exception as e:
+            logger.exception("Teacher CV view failed")
             return response_500(str(e))
         
         

@@ -129,7 +129,6 @@ def assign_user_to_package(user, package_id):
 
 # utils/email.py
 import logging
-import requests
 from django.conf import settings
 from django.core.mail import EmailMessage
 
@@ -155,11 +154,11 @@ def send_notification_email(subject, message, recipients, cv_url=None):
 
     if cv_url and cv_url != "N/A":
         try:
-            response = requests.get(cv_url, timeout=10)
-            response.raise_for_status()
-            filename = cv_url.split("/")[-1]
-            email.attach(filename, response.content, "application/pdf")
-        except requests.exceptions.RequestException as e:
+            from utils.cv_stream import fetch_cv_bytes
+            content, _content_type = fetch_cv_bytes(cv_url)
+            filename = cv_url.split("/")[-1].split("?")[0] or "cv.pdf"
+            email.attach(filename, content, "application/pdf")
+        except Exception as e:
             logger.warning("Failed to attach CV from %s: %s", cv_url, e)
 
     try:
