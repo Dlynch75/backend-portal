@@ -9,6 +9,7 @@ from .cv_upgrade import (
     build_share_url,
     complete_cv_upgrade_payment,
     get_cv_upgrade_amount,
+    get_or_create_guest_order,
     get_or_create_pending_order,
     teacher_has_active_order,
 )
@@ -150,6 +151,24 @@ class CVUpgradeCheckoutView(APIView):
             return create_response(create_message({'redirectUrl': redirect_url}, 1000), status.HTTP_200_OK)
         except CVUpgradeOrder.DoesNotExist:
             return response_500("This CV upgrade link is invalid.")
+        except Exception as e:
+            return response_500(str(e))
+
+
+class CVUpgradeGuestCheckoutView(APIView):
+    def post(self, request):
+        try:
+            if not cv_upgrade_enabled():
+                raise Exception("CV upgrade payments are not configured yet. Please contact support.")
+
+            candidate_name = (request.data.get('candidate_name') or '').strip()
+            candidate_email = (request.data.get('candidate_email') or '').strip()
+            order = get_or_create_guest_order(candidate_email, candidate_name)
+            redirect_url = create_checkout_session(order)
+            return create_response(
+                create_message({'redirectUrl': redirect_url, 'token': str(order.token)}, 1000),
+                status.HTTP_200_OK,
+            )
         except Exception as e:
             return response_500(str(e))
 

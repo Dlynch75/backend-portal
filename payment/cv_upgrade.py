@@ -40,10 +40,40 @@ def get_or_create_pending_order(teacher=None, school=None, candidate_email='', c
     )
 
 
-def complete_cv_upgrade_payment(order_id, stripe_session_id=None):
+def get_or_create_guest_order(candidate_email='', candidate_name=''):
+    email = candidate_email.strip().lower()
+    if not email:
+        raise Exception("Please enter your email address.")
+
+    pending = CVUpgradeOrder.objects.filter(
+        teacher__isnull=True,
+        candidate_email__iexact=email,
+        status='pending_payment',
+    ).order_by('-created_at').first()
+    if pending:
+        if candidate_name and not pending.candidate_name:
+            pending.candidate_name = candidate_name.strip()
+            pending.save(update_fields=['candidate_name'])
+        return pending
+
+    return CVUpgradeOrder.objects.create(
+        teacher=None,
+        candidate_email=email,
+        candidate_name=candidate_name.strip(),
+        amount=get_cv_upgrade_amount(),
+        currency='USD',
+    )
+
+
+def complete_cv_upgrade_payment(order_id, stripe_session_id=None, customer_email=None, customer_name=None):
     order = CVUpgradeOrder.objects.select_related('teacher').get(pk=order_id)
     if order.status == 'paid':
         return order
+
+    if customer_email and not order.candidate_email:
+        order.candidate_email = customer_email
+    if customer_name and not order.candidate_name:
+        order.candidate_name = customer_name
 
     order.status = 'paid'
     order.paid_at = timezone.now()

@@ -9,7 +9,7 @@ from utils.cloudinary_upload import upload_teacher_cv
 from utils.cv_stream import fetch_cv_bytes, resolve_cv_view_url
 from utils.response import create_message, create_response
 from utils.utils import get_user_from_token, require_authentication, response_500, send_notification_email
-from utils.feature_flags import is_teacher_application_paywall_enabled
+from utils.feature_flags import is_teacher_application_paywall_enabled, get_application_notify_emails
 from .serializers import HireSerializer, JobAlertSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -108,24 +108,29 @@ class HireListCreateView(APIView):
                 teacher.teacher.applied_count += 1
                 teacher.teacher.save()
 
-            subject_line = f"New Teacher Application - {teacher.username}"
+            teacher_profile = teacher.teacher
+            subject_line = f"New Application – {job.title} ({job.school.school_name})"
             cv_url = data.get('cv', 'N/A')
             cover_letter = data.get('cover_letter', 'N/A')
             message = (
-                f"A new teacher has applied for the job: {job.title}\n\n"
-                f"Teacher Name: {teacher.username}\n"
+                f"A new teacher has applied for a job on Gulf Teachers.\n\n"
+                f"Job: {job.title}\n"
+                f"School listing: {job.school.school_name}\n"
+                f"Location: {job.location or 'N/A'}\n\n"
+                f"Teacher: {teacher_profile.full_name or teacher.username}\n"
+                f"Username: {teacher.username}\n"
                 f"Email: {teacher.email}\n"
-                f"Phone: {teacher.teacher.phone or 'N/A'}\n"
-                f"Experience: {teacher.teacher.experience_year} years\n"
-                f"School: {job.school.school_name}\n\n"
-                f"Cover Letter:\n{cover_letter}\n\n"
+                f"Phone: {teacher_profile.phone or 'N/A'}\n"
+                f"Subject: {teacher_profile.teaching_subject or 'N/A'}\n"
+                f"Experience: {teacher_profile.experience_year} years\n\n"
+                f"Cover Letter:\n{cover_letter or 'N/A'}\n\n"
                 f"CV Download Link: {cv_url}\n"
             )
             try:
                 send_notification_email(
                     subject_line,
                     message,
-                    ['connect@gulfteachers.com', job.school.email],
+                    get_application_notify_emails(),
                     cv_url,
                 )
             except Exception as mail_error:

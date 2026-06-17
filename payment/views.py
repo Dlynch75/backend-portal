@@ -220,7 +220,13 @@ def stripe_webhook(request):
                 activate_job_feature(metadata['job_id'], duration_days)
                 return JsonResponse({'status': 'success'})
             if metadata.get('type') == 'cv_upgrade' and metadata.get('order_id'):
-                complete_cv_upgrade_payment(metadata['order_id'], session.get('id'))
+                customer_details = session.get('customer_details') or {}
+                complete_cv_upgrade_payment(
+                    metadata['order_id'],
+                    session.get('id'),
+                    customer_email=customer_details.get('email'),
+                    customer_name=customer_details.get('name'),
+                )
                 return JsonResponse({'status': 'success'})
             if session.get('mode') == 'payment':
                 return JsonResponse({'status': 'success'})
