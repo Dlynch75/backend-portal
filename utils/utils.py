@@ -135,6 +135,16 @@ from django.core.mail import EmailMessage
 logger = logging.getLogger(__name__)
 
 
+def friendly_email_send_error(exc):
+    message = str(exc)
+    lowered = message.lower()
+    if '535' in message or 'authentication rejected' in lowered or 'smtpauthenticationerror' in lowered:
+        return (
+            "We could not send the email right now. Please try again later or contact connect@gulfteachers.com."
+        )
+    return f"Failed to send email: {message}"
+
+
 def _get_from_email():
     return (
         getattr(settings, 'DEFAULT_FROM_EMAIL', None)

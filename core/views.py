@@ -338,7 +338,8 @@ The Gulf Teachers Team
                 send_notification_email(subject, message, [user.email])
                 return create_response(create_message("Password reset link has been sent to your email.", 1000), status.HTTP_200_OK)
             except Exception as e:
-                raise Exception(f"Failed to send email: {str(e)}")
+                from utils.utils import friendly_email_send_error
+                raise Exception(friendly_email_send_error(e))
                 
         except Exception as e:
             return response_500(str(e))
@@ -431,7 +432,8 @@ class EmailResendVerificationView(APIView):
                 return create_response(create_message(generic_message, 1000), status.HTTP_200_OK)
             except Exception as e:
                 logger.exception("Resend verification failed for %s", email)
-                raise Exception(f"Failed to send email: {str(e)}")
+                from utils.utils import friendly_email_send_error
+                raise Exception(friendly_email_send_error(e))
 
         except Exception as e:
             return response_500(str(e))
