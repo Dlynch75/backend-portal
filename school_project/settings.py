@@ -193,6 +193,14 @@ SIMPLE_JWT = {
 }
 from decouple import config
 
+
+def env_bool(key, default=False):
+    raw = config(key, default=str(default).lower())
+    if isinstance(raw, bool):
+        return raw
+    return str(raw).strip().lower() in ('true', '1', 'yes', 'on')
+
+
 # Stripe Keys
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')
@@ -223,17 +231,9 @@ APPLICATION_NOTIFY_EMAIL = config(
     default='connect@gulfteachers.com',
 )
 
-TEACHER_APPLICATION_PAYWALL_ENABLED = config(
-    'TEACHER_APPLICATION_PAYWALL_ENABLED',
-    default=False,
-    cast=bool,
-)
+TEACHER_APPLICATION_PAYWALL_ENABLED = env_bool('TEACHER_APPLICATION_PAYWALL_ENABLED', False)
 
-EMAIL_VERIFICATION_ENABLED = config(
-    'EMAIL_VERIFICATION_ENABLED',
-    default=True,
-    cast=bool,
-)
+EMAIL_VERIFICATION_ENABLED = env_bool('EMAIL_VERIFICATION_ENABLED', True)
 
 FEATURED_JOB_STRIPE_PRICE_ID = config('FEATURED_JOB_STRIPE_PRICE_ID', default='')
 FEATURED_JOB_DURATION_DAYS = config('FEATURED_JOB_DURATION_DAYS', default=30, cast=int)

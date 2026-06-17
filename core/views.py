@@ -14,6 +14,7 @@ from .serializers import PackageSerializer, TeacherSerializer, SchoolSerializer
 from utils.cloudinary_upload import upload_teacher_cv
 from utils.cv_stream import fetch_cv_bytes, resolve_cv_view_url
 import cloudinary.uploader
+from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
@@ -63,10 +64,14 @@ class UserSignupView(APIView):
                         serializer.validated_data['school_logo'] = image_url
                     
                     user = serializer.save()
-                    try:
-                        send_user_verification_email(user)
-                    except Exception as e:
-                        print(f"Failed to send verification email: {str(e)}")
+                    if is_email_verification_enabled():
+                        try:
+                            send_user_verification_email(user)
+                        except Exception as e:
+                            logger.warning("Failed to send verification email: %s", e)
+                    else:
+                        user.email_verified = True
+                        user.save(update_fields=['email_verified'])
                     
                     return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
                 else:
@@ -83,10 +88,14 @@ class UserSignupView(APIView):
                             except Exception as upload_error:
                                 raise Exception(f"CV upload failed: {str(upload_error)}")
                         user = serializer.save()
-                        try:
-                            send_user_verification_email(user)
-                        except Exception as e:
-                            print(f"Failed to send verification email: {str(e)}")
+                        if is_email_verification_enabled():
+                            try:
+                                send_user_verification_email(user)
+                            except Exception as e:
+                                logger.warning("Failed to send verification email: %s", e)
+                        else:
+                            user.email_verified = True
+                            user.save(update_fields=['email_verified'])
                         
                         return Response({'message': 'User created successfully!', 'data': serializer.data}, status=status.HTTP_201_CREATED)
                     except Exception as save_error:
@@ -135,8 +144,10 @@ class LoginView(APIView):
             # Check if user exists and password is correct
             if user is None or not user.check_password(password):
                 raise Exception("Email or Password Invalid")
+
+            if is_email_verification_enabled() and not user.email_verified:
+                raise Exception("Please verify your email before logging in. Check your inbox or use resend verification on the login page.")
             
-            # Check if email is verified (warn but don't block)
             email_verified = user.email_verified
             
             # Generate tokens
@@ -303,7 +314,7 @@ class PasswordResetRequestView(APIView):
             uid = urlsafe_base64_encode(force_bytes(user.pk))
             
             # Create reset link
-            frontend_url = "https://www.gulfteachers.com"  # Update with your frontend URL
+            frontend_url = settings.FRONTEND_URL.rstrip('/')
             reset_link = f"{frontend_url}/reset-password?uid={uid}&token={token}"
             
             # Send email
@@ -354,8 +365,10 @@ class PasswordResetConfirmView(APIView):
             # Verify token
             if not default_token_generator.check_token(user, token):
                 raise Exception("Invalid or expired reset token.")
+
+            from core.serializers import validate_user_password
+            validate_user_password(new_password, user=user)
             
-            # Set new password
             user.set_password(new_password)
             user.save()
             
